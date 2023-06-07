@@ -117,19 +117,56 @@ def hide_parts_list(parts_to_hide):
 
 def make_panorama_dataset(instances_dict: dict):
 
-    for key, item in instances_dict:
+    for instance_key, instance_parts in instances_dict.items():
         paths = ['/Users/bprovan/Downloads/dataset/148/textured_objs/*.obj']
 
-        path = os.path.join('/Users/bprovan/Downloads/dataset', str(key), 'textured_objs/*.obj')
+        path = os.path.join('/Users/bprovan/Downloads/dataset', str(instance_key), 'textured_objs/*.obj')
 
         # main part, load, take pictures, remove
 
-load_objs(paths[0])
+        load_objs(path)
 
-part_to_hide = 'Group1/mesh1/mesh1-geometry#mesh1-geometry'
+        save_path = '/Users/bprovan/Desktop/blender_pics/'
 
-part_hide_render(part_id=part_to_hide)
+        # so, we take pictures of the instance with no parts removed
 
-take_panorama(148, save_path)
+        pics_folder = str(instance_key) + '_true'
+        take_panorama(pics_folder, save_path)
+        
+        # instance parts represents the parts that can be removed
+        for part_id in instance_parts:
 
-delete_objects()
+            str_part_id = str(part_id)
+            part_name = 'mesh{}/mesh{}-geometry#mesh{}-geometry'.format(str_part_id, str_part_id, str_part_id)
+
+            # hide the part
+            part_hide_render(part_id=part_name)
+
+            pics_folder = str(instance_key) + '_' + str_part_id
+            take_panorama(pics_folder, save_path)
+
+            part_unhide_render(part_id=part_name)
+
+        
+        # delete the objects
+        delete_objects()
+
+
+            
+
+# 'mesh1/mesh1-geometry#mesh1-geometry'
+#  where the number is substituted? I'm not sure exactly how this importing works, 
+# I just hope it is consistent with how the folder is laod out (should be!)
+ 
+
+# load_objs(paths[0])
+
+# part_to_hide = 'Group1/mesh1/mesh1-geometry#mesh1-geometry'
+
+# part_hide_render(part_id=part_to_hide)
+
+# take_panorama(148, save_path)
+
+#delete_objects()
+
+make_panorama_dataset(glasses)
