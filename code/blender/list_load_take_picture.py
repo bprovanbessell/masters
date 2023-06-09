@@ -132,6 +132,7 @@ def set_camera_view_angle(view_angle: float, radius):
     cam.location.x = radius*sin(view_angle)
     cam.location.z = radius*cos(view_angle)
 
+
 def make_panorama_dataset(instances_dict: dict):
 
     for instance_key, instance_parts in instances_dict.items():
@@ -190,7 +191,7 @@ def make_view_panorama_dataset(instances_dict: dict,
             # set the camera view
             set_camera_view_angle(view_angle, radius)
 
-            pics_folder = str(instance_key) + '_view' +str(round(view_angle, 2)) + '_parttrue'
+            pics_folder = str(instance_key) + '_view' +str(round(view_angle, 2)) + '_true'
             take_panorama(pics_folder, save_path)
             
             # instance parts represents the parts that can be removed
@@ -211,22 +212,20 @@ def make_view_panorama_dataset(instances_dict: dict,
         # delete the objects
         delete_objects()
     
-
-    
-
-# 'mesh1/mesh1-geometry#mesh1-geometry'
-#  where the number is substituted? I'm not sure exactly how this importing works, 
-# I just hope it is consistent with how the folder is laod out (should be!)
- 
-
-# load_objs(paths[0])
+#load_objs(paths[0])
 
 # part_to_hide = 'Group1/mesh1/mesh1-geometry#mesh1-geometry'
 
 # part_hide_render(part_id=part_to_hide)
+#set_camera_view_angle(pi/4, radius=5)
 
 # take_panorama(148, save_path)
 
 #delete_objects()
 
-make_panorama_dataset(glasses)
+#make_panorama_dataset(glasses)
+
+make_view_panorama_dataset(glasses, 
+                               view_angles=[0, pi/8, pi/4, pi*3/8, pi/2], 
+                               shots_per_pan=20,
+                               radius=5)
