@@ -5,7 +5,7 @@ from math import *
 from mathutils import *
 
 
-paths = ['/Users/bprovan/Downloads/dataset/148/textured_objs/*.obj']
+paths = ['/Users/bprovan/Downloads/dataset/101284/textured_objs/*.obj']
 save_path = '/Users/bprovan/Desktop/blender_pics/'
 view_angles = [0, pi/8, pi/4, pi*3/8, pi/2]
 
@@ -28,10 +28,10 @@ def load_objs(path_to_folder):
         bpy.ops.import_scene.obj(filepath=fn, filter_glob='*.obj;*.mtl')
         id = "".join(list(filter(str.isdigit, fn[-10:-1])))
         bpy.context.selected_objects[0].name = 'original-' + id
-
+        
+        
 
 def delete_objects():
-    # select all the objects
     for obj in bpy.context.scene.objects:
         if obj.type == 'MESH':
             obj.select_set(True)
@@ -40,7 +40,6 @@ def delete_objects():
             
     bpy.ops.object.delete()
 
-        #remove it, this way you dont need to reopen/close file...
     for block in bpy.data.meshes:
         if block.users == 0:
             bpy.data.meshes.remove(block)
@@ -56,6 +55,7 @@ def delete_objects():
     for block in bpy.data.images:
         if block.users == 0:
             bpy.data.images.remove(block)
+            
 
 
 def take_panorama(instance_id, save_folder, num_steps=20):
@@ -63,8 +63,8 @@ def take_panorama(instance_id, save_folder, num_steps=20):
     #set your own target here
     # target = bpy.data.objects['new-0']
     # there should be something loaded, if this throws an error, then we haven't loaded properly
-    mesh1 = bpy.data.meshes[0].name
-    target = bpy.data.objects[mesh1]
+    
+    target = bpy.data.objects[2]
     cam = bpy.data.objects['Camera']
     t_loc_x = target.location.x
     t_loc_y = target.location.y
@@ -201,7 +201,8 @@ def make_view_panorama_dataset(instances_dict: dict,
             for part_id in instance_parts:
 
                 str_part_id = str(part_id)
-                part_name = 'mesh{}/mesh{}-geometry#mesh{}-geometry'.format(str_part_id, str_part_id, str_part_id)
+#                part_name = 'mesh{}/mesh{}-geometry#mesh{}-geometry'.format(str_part_id, str_part_id, str_part_id)
+                part_name = 'original-{}'.format(str_part_id)
 
                 # hide the part
                 part_hide_render(part_id=part_name)
@@ -214,7 +215,7 @@ def make_view_panorama_dataset(instances_dict: dict,
         
         # delete the objects
         delete_objects()
-    
+
 #load_objs(paths[0])
 
 # part_to_hide = 'Group1/mesh1/mesh1-geometry#mesh1-geometry'
@@ -224,7 +225,7 @@ def make_view_panorama_dataset(instances_dict: dict,
 
 # take_panorama(148, save_path)
 
-#delete_objects()
+delete_objects()
 
 #make_panorama_dataset(glasses)
 
