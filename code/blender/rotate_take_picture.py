@@ -124,3 +124,48 @@ for r in radius_range:
         bpy.ops.render.render(write_still=True)
 
 
+
+
+def change_camera_z_view_angle():
+    mesh1 = bpy.data.meshes[0].name
+    target = bpy.data.objects[mesh1]
+    cam = bpy.data.objects['Camera']
+    t_loc_x = target.location.x
+    t_loc_y = target.location.y
+    cam_loc_x = cam.location.x
+    cam_loc_y = cam.location.y
+
+    # cos along the x, sin along the y (z)
+
+    # we still have the same target. We need to find out what axis the camera is initially oriented at?, I don't want to think 
+    #  a 3d coordingate orientation
+    # which camera rotation euler has to be changed? previously they changed the [2], the z (makes sense)
+    # so change the x one??  I think so at least
+
+    # cam.rotation_euler[0] = 0 # pointing straight down
+    # cam.rotation_euler[0] = pi/2 # pointing horizontally = 90 degrees
+
+    # so probably the best thing is to initially translate (move) the camera to it with angle rotation of 0, (z)
+    # and then change the location...
+
+    # Could do this based on fixed radius
+    # so if its at 45 degrees initially, then cos(45) along x and sin(45) along the z, nah i think we need to invert it
+    # eg when its pointing horizontally, we need the x to be 1, and z to be 0
+    # so we can invert and do sin along the x, and cos along the y
+
+    # so, shift the camera to (0,0,0)
+
+    # camera rotation euler[2] should be pi/2 (to point in origin on z plane), where x is positive
+    # setting initial camera view (horizontal)
+
+    # rot angle is camera rotation euler x
+
+    cam.rotation_euler[0] = rot_angle
+
+    r = 8 # radiu
+    
+
+    cam.location.x = 5*sin(rot_angle)
+    cam.location.z = 5*cos(rot_angle)
+
+    cam.rotation_euler[2] = pi/2
