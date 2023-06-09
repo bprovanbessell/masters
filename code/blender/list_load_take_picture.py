@@ -12,12 +12,19 @@ view_angles = [0, pi/8, pi/4, pi*3/8, pi/2]
 # testing purposes
 glasses = {}
 
-# all parts prepended with 'original-'
-# glasses[101284] = [2,3,4,5]
-# glasses[101285] = [1,3,4,5]
-
-# try wuth the most simple example first
+glasses[101284] = [2,3,4,5]
+glasses[101285] = [1,3,4,5]
 glasses[101287] = [2,3]
+glasses[101291] = [8,9]
+glasses[101293] = [2,3]
+glasses[101297] = [2,3]
+glasses[101300] = [1,3,4,5]
+glasses[101326] = [5,6]
+glasses[101328] = [5,6]
+glasses[101332] = [2,4,5,6]
+glasses[101335] = [1,2,3,4]
+
+# Just a sample
 
 
 def load_objs(path_to_folder):
@@ -59,10 +66,6 @@ def delete_objects():
 
 
 def take_panorama(instance_id, save_folder, num_steps=20):
-
-    #set your own target here
-    # target = bpy.data.objects['new-0']
-    # there should be something loaded, if this throws an error, then we haven't loaded properly
     
     target = bpy.data.objects[2]
     cam = bpy.data.objects['Camera']
@@ -215,13 +218,6 @@ def make_view_panorama_dataset(instances_dict: dict,
         
         # delete the objects
         delete_objects()
-
-#load_objs(paths[0])
-
-# part_to_hide = 'Group1/mesh1/mesh1-geometry#mesh1-geometry'
-
-# part_hide_render(part_id=part_to_hide)
-#set_camera_view_angle(pi/4, radius=5)
 
 # take_panorama(148, save_path)
 
