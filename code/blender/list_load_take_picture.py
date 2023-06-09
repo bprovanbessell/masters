@@ -7,6 +7,7 @@ from mathutils import *
 
 paths = ['/Users/bprovan/Downloads/dataset/148/textured_objs/*.obj']
 save_path = '/Users/bprovan/Desktop/blender_pics/'
+view_angles = [0, pi/8, pi/4, pi*3/8, pi/2]
 
 # testing purposes
 glasses = {}
@@ -54,7 +55,7 @@ def delete_objects():
             bpy.data.images.remove(block)
 
 
-def take_panorama(instance_id, save_folder):
+def take_panorama(instance_id, save_folder, num_steps=20):
 
     #set your own target here
     # target = bpy.data.objects['new-0']
@@ -68,27 +69,28 @@ def take_panorama(instance_id, save_folder):
     cam_loc_y = cam.location.y
     # The different radii range
     #radius_range = range(3,9)
-    radius_range = [9]
+    radius_range = [5]
 
     R = (target.location.xy-cam.location.xy).length # Radius
     
     target_angle = pi*2
     #pi/2 is 90 degrees, 2pi is 360
-    num_steps = 20 #how many rotation steps
+    # num_steps = 20 #how many rotation steps
 
     for r in radius_range:
         for x in range(num_steps):
             alpha = (x)*target_angle/num_steps
             cam.rotation_euler[2] = pi/2 + alpha #
-            cam.location.x = t_loc_x+cos(alpha)*r
-            cam.location.y = t_loc_y+sin(alpha)*r
+            cam.location.x = t_loc_x+cos(alpha)*R
+            cam.location.y = t_loc_y+sin(alpha)*R
 
             # Define SAVEPATH and output filename
 
             dir_path = os.path.join(save_folder, str(instance_id))
             if not os.path.isdir(dir_path):
                 os.mkdir(dir_path)
-            save_file = os.path.join(dir_path, str(x)+'_'+ str(r)+'_'+str(round(alpha,2))+'_'+str(round(cam.location.x, 2))+'_'+str(round(cam.location.y, 2)))
+            # save_file = os.path.join(dir_path, str(x)+'_'+ str(r)+'_'+str(round(alpha,2))+'_'+str(round(cam.location.x, 2))+'_'+str(round(cam.location.y, 2)))
+            save_file = os.path.join(dir_path, str(x)+'_' + str(round(alpha,2)))
 
             # Render
             bpy.context.scene.render.filepath = save_file
@@ -114,6 +116,21 @@ def hide_parts_list(parts_to_hide):
     # then take the photos
     for part_id in parts_to_hide:
         part_unhide_render(part_id)
+
+
+def set_camera_view_angle(view_angle: float, radius):
+    cam = bpy.data.objects['Camera']
+
+    # set it to the origin
+    cam.location.x = 0
+    cam.location.y = 0
+    cam.location.z = 0
+    cam.rotation_euler[0] = view_angle
+    cam.rotation_euler[2] = pi/2
+
+    # now we set the angle and position
+    cam.location.x = radius*sin(view_angle)
+    cam.location.z = radius*cos(view_angle)
 
 def make_panorama_dataset(instances_dict: dict):
 
@@ -152,7 +169,50 @@ def make_panorama_dataset(instances_dict: dict):
         delete_objects()
 
 
+def make_view_panorama_dataset(instances_dict: dict, 
+                               view_angles=[0, pi/8, pi/4, pi*3/8, pi/2], 
+                               shots_per_pan=20,
+                               radius=5):
+    
+    for instance_key, instance_parts in instances_dict.items():
+
+        path = os.path.join('/Users/bprovan/Downloads/dataset', str(instance_key), 'textured_objs/*.obj')
+
+        # main part, load, take pictures, remove
+
+        load_objs(path)
+
+        save_path = '/Users/bprovan/Desktop/blender_pics/'
+
+        # so, we take pictures of the instance with no parts removed
+
+        for view_angle in view_angles:
+            # set the camera view
+            set_camera_view_angle(view_angle, radius)
+
+            pics_folder = str(instance_key) + '_view' +str(round(view_angle, 2)) + '_parttrue'
+            take_panorama(pics_folder, save_path)
             
+            # instance parts represents the parts that can be removed
+            for part_id in instance_parts:
+
+                str_part_id = str(part_id)
+                part_name = 'mesh{}/mesh{}-geometry#mesh{}-geometry'.format(str_part_id, str_part_id, str_part_id)
+
+                # hide the part
+                part_hide_render(part_id=part_name)
+
+                pics_folder = str(instance_key) + '_view' +str(round(view_angle,2)) + '_part' + str_part_id
+                take_panorama(pics_folder, save_path)
+
+                part_unhide_render(part_id=part_name)
+
+        
+        # delete the objects
+        delete_objects()
+    
+
+    
 
 # 'mesh1/mesh1-geometry#mesh1-geometry'
 #  where the number is substituted? I'm not sure exactly how this importing works, 
