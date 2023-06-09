@@ -26,6 +26,9 @@ def load_objs(path_to_folder):
     for fn in fn_list:
         
         bpy.ops.import_scene.obj(filepath=fn, filter_glob='*.obj;*.mtl')
+        id = "".join(list(filter(str.isdigit, fn[-10:-1])))
+        bpy.context.selected_objects[0].name = 'original-' + id
+
 
 def delete_objects():
     # select all the objects
