@@ -45,6 +45,7 @@ class MissingPartDataset(torch.utils.data.Dataset):
         else:
             label = 1
 
+        label = torch.tensor(label, dtype=torch.float32)
         return img, label
     
     def __len__(self):
