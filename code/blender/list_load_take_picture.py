@@ -36,7 +36,6 @@ def load_objs(path_to_folder):
         id = "".join(list(filter(str.isdigit, fn[-10:-1])))
         bpy.context.selected_objects[0].name = 'original-' + id
         
-        
 
 def delete_objects():
     for obj in bpy.context.scene.objects:

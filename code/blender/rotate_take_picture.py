@@ -125,7 +125,7 @@ for r in radius_range:
 
 
 
-
+# and we need to set the radius here too!
 def change_camera_z_view_angle():
     mesh1 = bpy.data.meshes[0].name
     target = bpy.data.objects[mesh1]
@@ -159,6 +159,11 @@ def change_camera_z_view_angle():
     # setting initial camera view (horizontal)
 
     # rot angle is camera rotation euler x
+
+    cam.location.x = 0
+    cam.location.y = 0
+    cam.location.z = 0
+    cam.rotation_euler[0] = rot_angle
 
     cam.rotation_euler[0] = rot_angle
 

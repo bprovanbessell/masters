@@ -10,6 +10,8 @@ fn_list = glob.glob('/Users/bprovan/Downloads/dataset/148/textured_objs/*.obj')
 for fn in fn_list:
     
     bpy.ops.import_scene.obj(filepath=fn, filter_glob='*.obj;*.mtl')
+    # and remane it too
+    
 #obj_object = bpy.context.selected_objects[0] ####<--Fix
 #print('Imported name: ', obj_object.name)
 
