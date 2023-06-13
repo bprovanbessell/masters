@@ -49,3 +49,8 @@ def set_camera_view_angle(view_angle: float, radius):
     cam.location.z = radius*cos(view_angle)
 
     cam.rotation_euler[2] = view_angle
+
+def set_render_resolution(res_x, res_y):
+    r = bpy.context.scene.render
+    r.resolution_x = res_x
+    r.resolution_y = res_y

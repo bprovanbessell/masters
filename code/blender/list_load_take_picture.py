@@ -138,6 +138,12 @@ def set_camera_view_angle(view_angle: float, radius):
     cam.location.z = radius*cos(view_angle)
 
 
+def set_render_resolution(res_x, res_y):
+    r = bpy.context.scene.render
+    r.resolution_x = res_x
+    r.resolution_y = res_y
+
+
 def make_panorama_dataset(instances_dict: dict):
 
     for instance_key, instance_parts in instances_dict.items():
@@ -223,6 +229,8 @@ def make_view_panorama_dataset(instances_dict: dict,
 delete_objects()
 
 #make_panorama_dataset(glasses)
+
+set_render_resolution(640, 640)
 
 make_view_panorama_dataset(glasses, 
                                view_angles=[0, pi/8, pi/4, pi*3/8, pi/2], 
