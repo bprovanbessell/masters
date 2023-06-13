@@ -51,11 +51,47 @@ class MissingPartDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.imgs_paths)
     
+
+class CatsDogsDataset(torch.utils.data.Dataset):
+
+    def __init__(self, img_dir, transforms):
+        self.img_dir = img_dir
+
+        self.transforms = transforms
+
+        self.imgs_paths = glob.glob(img_dir + '/*/*.jpg')
+
+    def __getitem__(self, idx):
+        img_path = self.imgs_paths[idx]
+        img = Image.open(img_path).convert("RGB")
+
+        if self.transforms is not None:
+            img = self.transforms(img)
+
+        label_str = img_path.split('/')[-1].split('.')[0]
+
+        # for now just binary classification
+        if label_str == 'cat':
+            # label = torch.zeros((1), dtype=torch.float32)
+            label = 0
+        else:
+            # label = torch.ones((1), dtype=torch.float32)
+            label = 1
+
+        label = torch.tensor(label, dtype=torch.float32)
+        return img, label
+    
+    def __len__(self):
+        return len(self.imgs_paths)
+
+    
 if __name__ == "__main__":
     # verify the dataset
     data_dir = '/Users/bprovan/Desktop/glasses_basic/'
 
-    input_size = 284
+    data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
+
+    input_size = 224
     # Other augentation techniques??
     trainTansform = transforms.Compose([
         transforms.CenterCrop(1080),
@@ -66,9 +102,18 @@ if __name__ == "__main__":
         preprocess
     # transforms.Normalize(mean=config.MEAN, std=config.STD)
     ])
-    ds = MissingPartDataset(data_dir, trainTansform)
 
-    train_dataloader = DataLoader(ds, batch_size=10, shuffle=True)
+    train_transforms = transforms.Compose([transforms.Resize((224,224)),
+                                       transforms.ToTensor(),                                
+                                       transforms.Normalize(
+                                           mean=[0.485, 0.456, 0.406],
+                                           std=[0.229, 0.224, 0.225],
+    ),
+                                       ])
+    # ds = MissingPartDataset(data_dir, preprocess)
+    cat_dog_ds = CatsDogsDataset(data_dir, transforms=preprocess)
+
+    train_dataloader = DataLoader(cat_dog_ds, batch_size=10, shuffle=True)
 
     # Display image and label.
     train_features, train_labels = next(iter(train_dataloader))
@@ -76,6 +121,7 @@ if __name__ == "__main__":
     print(f"Labels batch shape: {train_labels.size()}")
 
     for i in range(10):
+        print(train_labels)
         img = train_features[i].squeeze()
         label = train_labels[i]
         plt.imshow(img.permute(1, 2, 0))
