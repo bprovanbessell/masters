@@ -31,6 +31,7 @@ import os
 import numpy as np
 
 import custom_dataset
+import eval
 
 from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from torch import nn
@@ -132,7 +133,7 @@ acc_metric = torchmetrics.Accuracy(task='binary').to(device)
 # ------------- Training -------------
 from tqdm import tqdm
 
-epochs = 10
+epochs = 1
 
 for epoch in tqdm(range(epochs)):
     # set the model in training mode
@@ -169,7 +170,6 @@ for epoch in tqdm(range(epochs)):
         pred_class = torch.sigmoid(pred).round()
         pred_sigmoid = torch.sigmoid(pred)
         acc = acc_metric(pred_sigmoid, y)
-        trainCorrect += (pred_class == y).type(torch.float).sum().item()
 
     # trainCorrect += (pred.argmax(1) == y).type(
     # torch.float).sum().item()
@@ -191,26 +191,25 @@ for epoch in tqdm(range(epochs)):
             pred_class = torch.sigmoid(pred).round()
             pred_sigmoid = torch.sigmoid(pred)
             acc = acc_metric(pred_sigmoid, y)
-            valCorrect += (pred_class == y).type(torch.float).sum().item()
 
         val_acc = acc_metric.compute()
-
-        print("TORCHMETRICS", train_acc, val_acc)
 
         # calculate the average training and validation loss
         avgTrainLoss = totalTrainLoss / trainSteps
         avgValLoss = totalValLoss / valSteps
-        # calculate the training and validation accuracy
-        trainCorrect = trainCorrect / len(train_indices)
-        valCorrect = valCorrect / len(val_indices)
         # update our training history
         hist["train_loss"].append(avgTrainLoss.cpu().detach().numpy())
-        hist["train_acc"].append(trainCorrect)
+        hist["train_acc"].append(train_acc.item())
         hist["val_loss"].append(avgValLoss.cpu().detach().numpy())
-        hist["val_acc"].append(valCorrect)
+        hist["val_acc"].append(val_acc.item())
         # print the model training and validation information
         print("[INFO] EPOCH: {}/{}".format(epoch + 1, epochs))
         print("Train loss: {:.6f}, Train accuracy: {:.4f}".format(
-        avgTrainLoss, trainCorrect))
+        avgTrainLoss, train_acc.item()))
 
-        print("Val loss: {:.6f}, Val accuracy: {:.4f}".format(avgValLoss, valCorrect))
+        print("Val loss: {:.6f}, Val accuracy: {:.4f}".format(avgValLoss, val_acc.item()))
+
+# ----- Test set evaluation ------
+
+eval.evaluate_binary(test_dataloader, model=model, device=device)
+

@@ -84,7 +84,28 @@ class CatsDogsDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.imgs_paths)
 
-    
+# # transforms
+# # 
+# # # Can just use the transforms provided, probably will work better
+# # Other augentation techniques??
+# trainTansform = transforms.Compose([
+# transforms.CenterCrop(1080),
+# transforms.Resize(input_size),
+# # transforms.RandomResizedCrop(config.IMAGE_SIZE),
+# # transforms.RandomHorizontalFlip(),
+# transforms.ToTensor(),
+# preprocess,
+# # transforms.Normalize(mean=config.MEAN, std=config.STD)
+# ])
+# valTransform = transforms.Compose([
+# transforms.CenterCrop(1080),
+# transforms.Resize(input_size),
+# transforms.ToTensor(),
+# # transforms.Normalize(mean=config.MEAN, std=config.STD)
+# ])
+ 
+
+
 if __name__ == "__main__":
     # verify the dataset
     data_dir = '/Users/bprovan/Desktop/glasses_basic/'
