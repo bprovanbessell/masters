@@ -10,8 +10,11 @@
 - numpy
 - pillow
 - matplotlib
+- torchmetrics
+- pytorch ignite
 
 ```conda install pytorch torchvision torchaudio -c pytorch-nightly```
+``` pip install torchmetrics pytorch-ignite```
 
 Install Blender https://www.blender.org/
 

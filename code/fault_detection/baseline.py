@@ -34,14 +34,19 @@ import custom_dataset
 
 from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from torch import nn
+import torchmetrics
+from torchmetrics.classification import BinaryF1Score
+from ignite.metrics import ClassificationReport
 
 weights = ResNet50_Weights.IMAGENET1K_V2
-weights = ResNet18_Weights.DEFAULT
+# weights = ResNet18_Weights.DEFAULT
 preprocess = weights.transforms()
 
 
 device = "mps" if torch.backends.mps.is_available() \
 else "gpu" if torch.cuda.is_available() else "cpu"
+
+print(device)
 
 # for baseline, use pretrained on imagenet, binary classification. 
 
@@ -50,35 +55,16 @@ else "gpu" if torch.cuda.is_available() else "cpu"
 
 # so our initial size of photo is 1920x1080, we probably need to change this at some point
 
-# for imagenet it is 284??
-input_size = 284
+input_size = 224
 
-data_dir = '/Users/bprovan/Desktop/glasses_basic/'
+# data_dir = '/Users/bprovan/Desktop/glasses_basic/'
 data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
 
-
-# Can just use the transforms provided, probably will work better
-# Other augentation techniques??
-trainTansform = transforms.Compose([
-transforms.CenterCrop(1080),
-transforms.Resize(input_size),
-# transforms.RandomResizedCrop(config.IMAGE_SIZE),
-# transforms.RandomHorizontalFlip(),
-transforms.ToTensor(),
-preprocess,
-# transforms.Normalize(mean=config.MEAN, std=config.STD)
-])
-valTransform = transforms.Compose([
-transforms.CenterCrop(1080),
-transforms.Resize(input_size),
-transforms.ToTensor(),
-# transforms.Normalize(mean=config.MEAN, std=config.STD)
-])
-
-ds = custom_dataset.MissingPartDataset(img_dir=data_dir, transforms=preprocess)
+# pass in the transform for the pretrained model
+# ds = custom_dataset.MissingPartDataset(img_dir=data_dir, transforms=preprocess)
 ds = custom_dataset.CatsDogsDataset(img_dir=data_dir, transforms=preprocess)
 
-batch_size = 16
+batch_size = 32
 validation_split = 0.2
 test_split = 0.2
 shuffle_dataset = True
@@ -117,10 +103,8 @@ print("dataloader length", len(train_dataloader))
 
 # ------- Model setup -------
 
-# I'll need to pass this transform too... Otherwise the pretrained stuff will not work
-
-# model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-model = resnet18(weights=ResNet18_Weights.DEFAULT)
+model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+# model = resnet18(weights=ResNet18_Weights.DEFAULT)
 
 # freeze the weights, set them to be non trainable
 for param in model.parameters():
@@ -143,10 +127,12 @@ trainSteps = len(train_indices) // batch_size
 valSteps = len(val_indices) // batch_size
 print("steps", trainSteps, valSteps)
 
+acc_metric = torchmetrics.Accuracy(task='binary').to(device)
+
 # ------------- Training -------------
 from tqdm import tqdm
 
-epochs = 2
+epochs = 10
 
 for epoch in tqdm(range(epochs)):
     # set the model in training mode
@@ -181,16 +167,17 @@ for epoch in tqdm(range(epochs)):
         totalTrainLoss += loss
         # threshold of 0.5
         pred_class = torch.sigmoid(pred).round()
-
+        pred_sigmoid = torch.sigmoid(pred)
+        acc = acc_metric(pred_sigmoid, y)
         trainCorrect += (pred_class == y).type(torch.float).sum().item()
 
-        # print("correct i{}, num{}".format(i, trainCorrect))
-        # print(trainCorrect)
     # trainCorrect += (pred.argmax(1) == y).type(
     # torch.float).sum().item()
 
+    # accumulates over all batches
+    train_acc = acc_metric.compute()
+    acc_metric.reset()
     # validation
-    # switch off autograd
     with torch.no_grad():
     # set the model in evaluation mode
         model.eval()
@@ -200,11 +187,15 @@ for epoch in tqdm(range(epochs)):
             pred = model(x)
             totalValLoss += criterion(pred, y)
             # calculate the number of correct predictions
-
             # threshold of 0.5
             pred_class = torch.sigmoid(pred).round()
+            pred_sigmoid = torch.sigmoid(pred)
+            acc = acc_metric(pred_sigmoid, y)
             valCorrect += (pred_class == y).type(torch.float).sum().item()
 
+        val_acc = acc_metric.compute()
+
+        print("TORCHMETRICS", train_acc, val_acc)
 
         # calculate the average training and validation loss
         avgTrainLoss = totalTrainLoss / trainSteps
