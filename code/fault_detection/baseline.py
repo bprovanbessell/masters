@@ -32,6 +32,7 @@ import numpy as np
 
 import custom_dataset
 import eval
+import models
 
 from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from torch import nn
@@ -59,11 +60,14 @@ print(device)
 input_size = 224
 
 # data_dir = '/Users/bprovan/Desktop/glasses_basic/'
-data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
+# data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
+data_dir = '/Users/bprovan/Desktop/gen_images_640/'
+data_dir = '/Users/bprovan/Desktop/glasses_640/'
 
 # pass in the transform for the pretrained model
 # ds = custom_dataset.MissingPartDataset(img_dir=data_dir, transforms=preprocess)
 ds = custom_dataset.CatsDogsDataset(img_dir=data_dir, transforms=preprocess)
+ds = custom_dataset.MissingPartDataset2Binary(img_dir=data_dir, transforms=preprocess)
 
 batch_size = 32
 validation_split = 0.2
@@ -104,20 +108,17 @@ print("dataloader length", len(train_dataloader))
 
 # ------- Model setup -------
 
-model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-# model = resnet18(weights=ResNet18_Weights.DEFAULT)
-
-# freeze the weights, set them to be non trainable
-for param in model.parameters():
-    param.requires_grad = False
-
-modelOutputFeats = model.fc.in_features
-
-# currently just binary classification
-model.fc = nn.Linear(modelOutputFeats, 1)
+model = models.resnet50_pretrained_model(num_classes=1)
 model = model.to(device)
 
 criterion = nn.BCEWithLogitsLoss()
+
+# for multiclass
+# criterion = nn.CrossEntropyLoss()
+
+# and then for prediction
+# torch.nn.functional.softmax(output[0], dim=0)
+
 # can set the learning rate if needed?, but otherwise us the default
 optimizer = torch.optim.Adam(model.fc.parameters())
 
@@ -129,11 +130,12 @@ valSteps = len(val_indices) // batch_size
 print("steps", trainSteps, valSteps)
 
 acc_metric = torchmetrics.Accuracy(task='binary').to(device)
+# acc_metric = torchmetrics.Accuracy(task='multiclass').to(device)
 
 # ------------- Training -------------
 from tqdm import tqdm
 
-epochs = 1
+epochs = 4
 
 for epoch in tqdm(range(epochs)):
     # set the model in training mode
