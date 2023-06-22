@@ -21,3 +21,7 @@ def resnet50_pretrained_model(num_classes=1):
 
     return model
 
+
+# https://pyimagesearch.com/2021/10/11/pytorch-transfer-learning-and-image-classification/
+# Can also just create a more complex prediction 'head' model. eg a few layers with some relu
+

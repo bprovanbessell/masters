@@ -84,6 +84,39 @@ class MissingPartDataset2Binary(torch.utils.data.Dataset):
         return len(self.imgs_paths)
     
 
+class MissingPartDatasetMultiClass(torch.utils.data.Dataset):
+    def __init__(self, img_dir, transforms):
+        self.img_dir = img_dir
+
+        self.transforms = transforms
+
+        self.imgs_paths = glob.glob(img_dir + '/*/*.png')
+
+    def __getitem__(self, idx):
+        img_path = self.imgs_paths[idx]
+        img = Image.open(img_path).convert("RGB")
+
+        if self.transforms is not None:
+            img = self.transforms(img)
+
+        label_str_base = img_path.split('/')[-1].split('_')[0]
+        # later this will be important for multi-class class splitting, the id of the removed part. E.g. leg 0, leg 1 ...
+        label_str_part_num = img_path.split('/')[-1].split('_')[1]
+        # for glasses it is easy, only leg 1 and leg 2
+        if label_str_base == 'orig':
+            label = 0
+        elif label_str_part_num == "1":
+            label = 1
+        else:
+            label = 2
+
+        label = torch.tensor(label, dtype=torch.long)
+        return img, label
+    
+    def __len__(self):
+        return len(self.imgs_paths)
+    
+
 class CatsDogsDataset(torch.utils.data.Dataset):
 
     def __init__(self, img_dir, transforms):
