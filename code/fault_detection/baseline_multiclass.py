@@ -26,8 +26,11 @@ weights = ResNet50_Weights.IMAGENET1K_V2
 preprocess = weights.transforms()
 
 flower_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/flower_photos'
+data_dir = '/Users/bprovan/Desktop/glasses_640/'
 
-ds = datasets.ImageFolder(root=flower_data_dir, transform=preprocess) # 5 classes in the flowers dataset
+# ds = datasets.ImageFolder(root=flower_data_dir, transform=preprocess) # 5 classes in the flowers dataset
+ds = custom_dataset.MissingPartDatasetMultiClass(img_dir=data_dir, transforms=preprocess)
+
 
 
 batch_size = 32
@@ -80,7 +83,8 @@ for param in model.parameters():
     param.requires_grad = False
 
 
-num_classes = len(ds.classes)
+# num_classes = len(ds.classes)
+num_classes = 3
 
 model.fc = nn.Linear(modelOutputFeats, num_classes)
 
