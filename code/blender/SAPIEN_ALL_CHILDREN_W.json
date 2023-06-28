@@ -1,0 +1,226 @@
+{
+    "Remote": [
+        "button"
+    ],
+    "KitchenPot": [
+        "lid"
+    ],
+    "USB": [
+        "cap",
+        "rotation",
+        "handle (other)"
+    ],
+    "Cart": [
+        "wheel"
+    ],
+    "Box": [
+        "rotation_lid"
+    ],
+    "Pliers": [
+        "leg"
+    ],
+    "Suitcase": [
+        "belt (other)",
+        "handle",
+        "lid",
+        "other_leaf"
+    ],
+    "Printer": [
+        "drawer",
+        "lid"
+    ],
+    "WashingMachine": [
+        "door"
+    ],
+    "Lighter": [
+        "button",
+        "lid"
+    ],
+    "Refrigerator": [
+        "Door"
+    ],
+    "Switch": [
+        "switch"
+    ],
+    "Laptop": [
+        "Base Side",
+        "Screen Side"
+    ],
+    "Bucket": [
+        "lid",
+        "handle"
+    ],
+    "FoldingChair": [
+        "seat"
+    ],
+    "Globe": [
+        "sphere"
+    ],
+    "Trashcan": [
+        "lid",
+        "opener"
+    ],
+    "Luggage": [
+        "wheel"
+    ],
+    "Window": [
+        "translation"
+    ],
+    "Knife": [
+        "rotation_blade",
+        "translation_blade"
+    ],
+    "Faucet": [
+        "Switch",
+        "Spout"
+    ],
+    "Fan": [
+        "fan"
+    ],
+    "Eyeglasses": [
+        "leg"
+    ],
+    "Kettle": [
+        "handle",
+        "lid"
+    ],
+    "Toilet": [
+        "lid"
+    ],
+    "Dispenser": [
+        "pressing_lid",
+        "head (other)"
+    ],
+    "Camera": [
+        "lens"
+    ],
+    "Safe": [
+        "door"
+    ],
+    "Mouse": [
+        "wheel",
+        "button"
+    ],
+    "Pen": [
+        "cap",
+        "button"
+    ],
+    "Oven": [
+        "door"
+    ],
+    "CoffeeMachine": [
+        "container",
+        "lid"
+    ],
+    "Stapler": [
+        "lid"
+    ],
+    "Phone": [
+        "translation_lid",
+        "flipping_lid"
+    ],
+    "Toaster": [
+        "button",
+        "slider"
+    ],
+    "Trash Can": [
+        "Cover"
+    ],
+    "Scissors": [
+        "Blade",
+        "Handle",
+        "Blade Handle Set"
+    ],
+    "Dish Washer": [
+        "Door"
+    ],
+    "Keyboard": [
+        "Key",
+        "Tilt Leg",
+        "mouse (other)",
+        "plug (other)",
+        "Cord",
+        "Touchpad (other)",
+        "Touchpad button (other)",
+        "Plug head (other)",
+        "Button (other)",
+        "U disk (other)",
+        "Frame",
+        "Indicator light (other)",
+        "other_leaf",
+        "Touch panel (other)"
+    ],
+    "Lamp": [
+        "Lamp unit",
+        "Lamp base"
+    ],
+    "Sitting Furniture": [
+        "Chair Arm",
+        "Chair Back",
+        "Leg",
+        "Wheel",
+        "Chair Base"
+    ],
+    "Table": [
+        "Drawer",
+        "Leg",
+        "Wheel",
+        "Foot",
+        "Runner",
+        "Cabinet door"
+    ],
+    "Bottle": [
+        "Closure",
+        "Mouth",
+        "Lid"
+    ],
+    "Display": [
+        "Base",
+        "Surface",
+        "horizontal support (other)",
+        "Surface Base",
+        "Frame",
+        "flat (other)",
+        "other_leaf",
+        "Base Support",
+        "Button",
+        "Screen"
+    ],
+    "Storage Furniture": [
+        "Cabinet door",
+        "Drawer",
+        "Mirror"
+    ],
+    "Pot": [
+        "Lid"
+    ],
+    "Clock": [
+        "Foot Base",
+        "Hanging Base",
+        "Hand",
+        "Glass cover (other)",
+        "Frame",
+        "Base Support",
+        "Button",
+        "Normal Clock",
+        "Alarm Part",
+        "Glass",
+        "Base",
+        "Surface",
+        "Base Surface",
+        "Surface Base",
+        "other_leaf",
+        "Foot",
+        "Clock Body",
+        "Alarm Ring"
+    ],
+    "Microwave": [
+        "Door"
+    ],
+    "Mug": [
+        "Lid"
+    ],
+    "Door Set": [
+        "Door"
+    ]
+}

@@ -1,31 +1,59 @@
 import glob
 import json
 import os
+import time
+import traceback
 from math import *
 
 import bpy
 import numpy as np
 from mathutils import *
 
+"""
+TODO:
+
+1. How to decide the image resolution
+2. What number of images per state of one model should we render
+3. Whether to render the entire panorama around the model or just the upper part of the object
+4. How to handle images rendered from parts that are removed but not visible in the camera itself,
+   and whether these images should be marked as positive or negative
+"""
+
+
 # DATASET_PATH = r"E:\UOE\Dissertation\dataset\SAPIEN"
-DATASET_PATH = "/Users/bprovan/Downloads/dataset"
+DATASET_PATH = "/Users/bprovan/University/dissertation/datasets/partnet-mobility"
 # SAVE_PATH = r"E:\UOE\Dissertation\dataset\MyDataset"  # path to save pics
-SAVE_PATH = "/Users/bprovan/Desktop/gen_images_640"
+SAVE_PATH = "/Users/bprovan/University/dissertation/datasets/images_ds_v0"
 # path to save this scripts and used json files
 # WORKSPACE_PATH = r"E:\UOE\Dissertation\Workspace\SAPIEN"
-WORKSPACE_PATH = "/Users/bprovan/University/dissertation/masters/code/blender"
+WORKSPACE_PATH = "/Users/bprovan/University/dissertation/mpd-master/SAPIEN"
+
+ERROR_FILE_PATH = "Users/bprovan/University/dissertation/mpd-master/SAPIEN"
+
+
+# SAVE_PATH = r"E:\UOE\Dissertation\dataset\MyDataset"  # path to save pics
+# path to save this scripts and used json files
+# WORKSPACE_PATH = r"E:\UOE\Dissertation\mpd\SAPIEN"
 
 
 # parse model ids of one category. Change CATEGORY to render the pics of all
 # the objs of the category
-MODEL_IDS = []
-CURR_CATEGORY = "KitchenPot"
+# MODEL_IDS = []
+# CURR_CATEGORY = "FoldingChair"
+# MODEL_ID_JSON = "SAPIEN_model_ids.json"
+# json_file = os.path.join(WORKSPACE_PATH, MODEL_ID_JSON)
+# with open(json_file, "r") as f:
+#     data: dict = json.load(f)
+#     for key in data.setdefault(CURR_CATEGORY, []):
+#         MODEL_IDS.append(key)
+
+MODEL_CHILDREN_JSON = "SAPIEN_ALL_CHILDREN.json"
 MODEL_ID_JSON = "SAPIEN_model_ids.json"
-json_file = os.path.join(WORKSPACE_PATH, MODEL_ID_JSON)
+
+json_file = os.path.join(WORKSPACE_PATH, MODEL_CHILDREN_JSON)
 with open(json_file, "r") as f:
     data: dict = json.load(f)
-    for key in data.setdefault(CURR_CATEGORY, []):
-        MODEL_IDS.append(key)
+    CATEGORIES = list(data.keys())
 
 
 # parse the removable parts stored in SAPIEN_ALL_CHILDREN. The json file now
@@ -40,11 +68,6 @@ with open(json_file, "r") as f:
 
 
 VIEW_RADIUS = 5.0  # view radius of the camera
-
-def set_render_resolution(res_x, res_y):
-    r = bpy.context.scene.render
-    r.resolution_x = res_x
-    r.resolution_y = res_y
 
 
 def load_model(path_to_model: str) -> None:
@@ -101,41 +124,45 @@ def look_at(obj, target):
     obj.rotation_euler = rot_quat.to_euler()
 
 
-def golden_spiral_points(num_points: int):
-    """Generate golden spiral points, These points will be evenly distributed
-       over the hemispherical range on the ground of the target object (z > 0)
+def generate_camera_points(num_points: int, angle_deg: float = 30):
+    """Generate points for camera, distributed evenly over a 360 degree circle
+       at a specific angle from horizontal plane.
 
     Args:
         num_points (int): number of generated points
+        angle_deg (float): angle from horizontal plane in degrees. Defaults to 30.
 
     Returns:
         2D vector: points
     """
-    indices = np.arange(0, num_points, dtype=float) + 0.5
+    # Convert angle to radians
+    angle_rad = radians(angle_deg)
 
-    phi = (np.sqrt(5.0) - 1.0) / 2.0  # golden ratio
-    z = 1 - (indices / num_points)  # z goes from 1 to 0
-    radius = np.sqrt(1 - z * z)  # radius at z
+    # Generate evenly distributed points over the 360 degree range
+    theta = np.linspace(0, 2 * np.pi, num_points)
 
-    theta = 2 * np.pi * phi * indices
-
-    x, y = radius * np.cos(theta), radius * np.sin(theta)
+    x = np.cos(theta)
+    y = np.sin(theta)
+    z = np.tan(angle_rad) * np.sqrt(x * x + y * y)
     return np.column_stack((x, y, z))
 
 
-def take_panorama(model_id: str, prefix: str, num_images: int = 20) -> None:
+def take_panorama(
+    model_id: str, category: str, prefix: str, num_images: int = 12, angle_deg: float = 30
+) -> None:
     """Take panorama photos of target obj. These photographs will be taken evenly
-       from the upper hemispherical range of the object.
+       from a circular path at a specific angle from the horizontal plane of the object.
 
     Args:
         model_id (str): model_id, i.e. the folder name
         prefix (str): prefix to save the pics
-        num_images (int, optional): number of iamges to be taken. Defaults to 20.
+        num_images (int, optional): number of images to be taken. Defaults to 12.
+        angle_deg (float): angle from horizontal plane in degrees. Defaults to 30.
     """
     cam = bpy.data.objects["Camera"]
     target = Vector((0.0, 0.0, 0.0))  # The target point you want the camera to look at
 
-    points = golden_spiral_points(num_images)
+    points = generate_camera_points(num_images, angle_deg)
     for idx, point in enumerate(points):
         cam.location.x = VIEW_RADIUS * point[0]
         cam.location.y = VIEW_RADIUS * point[1]
@@ -143,7 +170,7 @@ def take_panorama(model_id: str, prefix: str, num_images: int = 20) -> None:
 
         look_at(cam, target)  # Adjust the rotation of the camera
 
-        dir_path = os.path.join(SAVE_PATH, model_id)
+        dir_path = os.path.join(SAVE_PATH, category, model_id)
         if not os.path.isdir(dir_path):
             os.mkdir(dir_path)
         save_file = os.path.join(dir_path, f"{prefix}_{idx}")
@@ -152,7 +179,7 @@ def take_panorama(model_id: str, prefix: str, num_images: int = 20) -> None:
         bpy.ops.render.render(write_still=True)
 
 
-def recur_remove_render(model_id: str, part_data: dict, removables: list) -> None:
+def recur_remove_render(model_id: str, category: str, part_data: dict, removables: list) -> None:
     """recursively remove parts of the target model
 
     Args:
@@ -160,18 +187,47 @@ def recur_remove_render(model_id: str, part_data: dict, removables: list) -> Non
         part_data (dict): target model structure data, parsing from result.json
         removables (list): removable parts list
     """
+
+    def collect_part_ids(data: dict) -> list:
+        """Recursively collect all part_ids from children structures
+
+        Args:
+            data (dict): target model structure data
+
+        Returns:
+            list: list of part_ids
+        """
+        part_ids = []
+        if "objs" in data:
+            part_ids.extend(data["objs"])
+        if "children" in data:
+            for child in data["children"]:
+                part_ids.extend(collect_part_ids(child))
+        return part_ids
+
+    if part_data.setdefault("text", "") in removables:
+        part_ids = collect_part_ids(part_data)
+
+        # Hide all parts for rendering
+        for part_id in part_ids:
+            if part_id in bpy.data.objects:
+                bpy.data.objects[part_id].hide_render = True
+
+        # Take panorama
+        take_panorama(model_id, category, f"{part_data['text']}_{part_data['id']}")
+
+        # Unhide all parts after rendering
+        for part_id in part_ids:
+            if part_id in bpy.data.objects:
+                bpy.data.objects[part_id].hide_render = False
+
+    # Continue recursion for children
     if "children" in part_data:
         for child in part_data["children"]:
-            recur_remove_render(model_id, child, removables)
-    if part_data.setdefault("text", "") in removables and "objs" in part_data:
-        for part_id in part_data["objs"]:
-            bpy.data.objects[part_id].hide_render = True
-        take_panorama(model_id, f"{part_data['text']}_{part_data['id']}")
-        for part_id in part_data["objs"]:
-            bpy.data.objects[part_id].hide_render = False
+            recur_remove_render(model_id, category, child, removables)
 
 
-def render(model_id: str) -> None:
+def render(model_id: str, category: str) -> None:
     """render one model. Take photos of complete model and model with missing parts
 
     Args:
@@ -180,7 +236,7 @@ def render(model_id: str) -> None:
     model_path = os.path.join(DATASET_PATH, model_id)
     load_model(model_path)
     # Get panorama of original obj
-    take_panorama(model_id, "orig")
+    take_panorama(model_id, category, "orig")
     part_data: dict = {}
     json_path = os.path.join(model_path, "result.json")
     with open(json_path, "r") as fin:
@@ -190,16 +246,41 @@ def render(model_id: str) -> None:
     removables = REMOVEABLES.setdefault(category, [])
     if len(removables) == 0:
         return
-    recur_remove_render(model_id, part_data, removables)
+    recur_remove_render(model_id, category, part_data, removables)
 
 
 def main():
+    start_time = time.time()
 
-    set_render_resolution(640, 640)
+    CATEGORIES = ['KitchenPot', 'Switch', "Eyeglasses"]
 
-    for id in MODEL_IDS:
-        clear_scene()
-        render(id)
+    for category in CATEGORIES:
+        model_ids = []
+        json_file = os.path.join(WORKSPACE_PATH, MODEL_ID_JSON)
+        with open(json_file, "r") as f:
+            data: dict = json.load(f)
+            for key in data.setdefault(category, []):
+                model_ids.append(key)
+        
+        category_dir = os.path.join(SAVE_PATH, category)
+        os.mkdir(category_dir)
+
+        for id in model_ids:
+            try:
+                clear_scene()
+                render(id, category)
+            except Exception as e:
+                error_message = f"An error occurred with model id {id}: {str(e)}"
+                print(error_message)  # output to console
+                error_file = os.path.join(ERROR_FILE_PATH, "error.log")
+                with open(error_file, "a") as f:  # write to file
+                    f.write(error_message + "\n")
+                    traceback.print_exc(file=f)  # write traceback info to file
+        total_time = time.time() - start_time
+        print(
+            f"Total time: {total_time:.2f}s, "
+            f"average time per model: {total_time / len(model_ids):2f}s"
+        )
 
 
 if __name__ == "__main__":
