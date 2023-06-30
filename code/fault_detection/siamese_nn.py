@@ -28,7 +28,7 @@ from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_We
 from torch.utils.data.sampler import SubsetRandomSampler
 
 from PIL import Image
-
+from custom_dataset import SiameseDatasetSingleCategory
 
 
 class SiameseNetwork(nn.Module):
@@ -265,8 +265,10 @@ def main():
 
     print(device)
     cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
+    missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
 
     ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
+    ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
 
 
     # Creating data indices for training and validation splits:

@@ -64,14 +64,15 @@ cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/a
 flower_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/flower_photos'
 data_dir = '/Users/bprovan/Desktop/gen_images_640/'
 data_dir = '/Users/bprovan/Desktop/glasses_640/'
+missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0/KitchenPot'
 
 # pass in the transform for the pretrained model
 # ds = custom_dataset.MissingPartDataset(img_dir=data_dir, transforms=preprocess)
 # ds = custom_dataset.CatsDogsDataset(img_dir=cats_dogs_data_dir, transforms=preprocess)
 ds = custom_dataset.MissingPartDataset2Binary(img_dir=data_dir, transforms=preprocess)
-ds = custom_dataset.MissingPartDatasetMultiClass(img_dir=data_dir, transforms=preprocess)
+# ds = custom_dataset.MissingPartDatasetMultiClass(img_dir=data_dir, transforms=preprocess)
 
-ds = datasets.ImageFolder(root=flower_data_dir, transform=preprocess) # 5 classes in the flowers dataset
+# ds = datasets.ImageFolder(root=flower_data_dir, transform=preprocess) # 5 classes in the flowers dataset
 
 batch_size = 32
 validation_split = 0.2
@@ -112,15 +113,12 @@ print("dataloader length", len(train_dataloader))
 
 # ------- Model setup -------
 
-num_classes = 5
+num_classes = 1
 
 model = models.resnet50_pretrained_model(num_classes=num_classes)
 model = model.to(device)
 
-# criterion = nn.BCEWithLogitsLoss()
-
-# for multiclass
-criterion = nn.CrossEntropyLoss()
+criterion = nn.BCEWithLogitsLoss()
 
 # and then for prediction
 # torch.nn.functional.softmax(output[0], dim=0)
@@ -136,7 +134,7 @@ valSteps = len(val_indices) // batch_size
 print("steps", trainSteps, valSteps)
 
 acc_metric = torchmetrics.Accuracy(task='binary').to(device)
-acc_metric = torchmetrics.Accuracy(task='multiclass', num_classes=num_classes).to(device)
+# acc_metric = torchmetrics.Accuracy(task='multiclass', num_classes=num_classes).to(device)
 
 # ------------- Training -------------
 from tqdm import tqdm
@@ -158,8 +156,8 @@ for epoch in tqdm(range(epochs)):
     # send the input to the device
         # print(y)
         # For binary
-        # (x, y) = (x.to(device), y.to(device).reshape(-1,1))
-        (x, y) = (x.to(device), y.to(device))
+        (x, y) = (x.to(device), y.to(device).reshape(-1,1))
+        # (x, y) = (x.to(device), y.to(device))
         # perform a forward pass and calculate the training loss
         pred = model(x)
         loss = criterion(pred, y)
@@ -172,25 +170,12 @@ for epoch in tqdm(range(epochs)):
         # calculate the number of correct predictions
         totalTrainLoss += loss
         # threshold of 0.5
-        # pred_class = torch.sigmoid(pred).round()
-        # pred_sigmoid = torch.sigmoid(pred)
+        pred_class = torch.sigmoid(pred).round()
+        pred_sigmoid = torch.sigmoid(pred)
         # print("logits", pred)
-        preds = torch.nn.functional.softmax(pred, dim=1)
+        # preds = torch.nn.functional.softmax(pred, dim=1)
         acc = acc_metric(preds, y)
         
-        if i % 100 == 0:
-
-            print("softmax preds", preds)
-            # print(y)
-            # preds = nn.LogSoftmax(pred)
-
-            
-            print(y)
-            print(pred)
-            print(pred.argmax(1))
-
-            trainCorrect += (pred.argmax(1) == y).type(torch.float).sum().item()
-            print(trainCorrect)
 
     # accumulates over all batches
     train_acc = acc_metric.compute()
