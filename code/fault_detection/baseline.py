@@ -64,12 +64,12 @@ cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/a
 flower_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/flower_photos'
 data_dir = '/Users/bprovan/Desktop/gen_images_640/'
 data_dir = '/Users/bprovan/Desktop/glasses_640/'
-missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0/KitchenPot'
+missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0/KitchenPot/'
 
 # pass in the transform for the pretrained model
 # ds = custom_dataset.MissingPartDataset(img_dir=data_dir, transforms=preprocess)
 # ds = custom_dataset.CatsDogsDataset(img_dir=cats_dogs_data_dir, transforms=preprocess)
-ds = custom_dataset.MissingPartDataset2Binary(img_dir=data_dir, transforms=preprocess)
+ds = custom_dataset.MissingPartDataset2Binary(img_dir=missing_parts_base_dir, transforms=preprocess)
 # ds = custom_dataset.MissingPartDatasetMultiClass(img_dir=data_dir, transforms=preprocess)
 
 # ds = datasets.ImageFolder(root=flower_data_dir, transform=preprocess) # 5 classes in the flowers dataset
@@ -174,7 +174,7 @@ for epoch in tqdm(range(epochs)):
         pred_sigmoid = torch.sigmoid(pred)
         # print("logits", pred)
         # preds = torch.nn.functional.softmax(pred, dim=1)
-        acc = acc_metric(preds, y)
+        acc = acc_metric(pred, y)
         
 
     # accumulates over all batches
@@ -186,16 +186,16 @@ for epoch in tqdm(range(epochs)):
         model.eval()
         # loop over the validation set
         for (x, y) in val_dataloader:
-            (x, y) = (x.to(device), y.to(device))
-            # (x, y) = (x.to(device), y.to(device).reshape(-1, 1))
+            # (x, y) = (x.to(device), y.to(device))
+            (x, y) = (x.to(device), y.to(device).reshape(-1, 1))
             pred = model(x)
             totalValLoss += criterion(pred, y)
             # calculate the number of correct predictions
             # threshold of 0.5
-            # pred_class = torch.sigmoid(pred).round()
+            pred_class = torch.sigmoid(pred).round()
             # pred_sigmoid = torch.sigmoid(pred)
-            preds = torch.nn.functional.softmax(pred, dim=1)
-            acc = acc_metric(preds, y)
+            # preds = torch.nn.functional.softmax(pred, dim=1)
+            acc = acc_metric(pred, y)
 
         val_acc = acc_metric.compute()
 
@@ -216,7 +216,7 @@ for epoch in tqdm(range(epochs)):
 
 # ----- Test set evaluation ------
 
-# eval.evaluate_binary(test_dataloader, model=model, device=device)
-eval.evaluate_multiclass(3, test_dataloader, model=model, device=device)
+eval.evaluate_binary(test_dataloader, model=model, device=device)
+# eval.evaluate_multiclass(3, test_dataloader, model=model, device=device)
 
 
