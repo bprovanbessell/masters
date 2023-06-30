@@ -234,13 +234,14 @@ def test(model, device, test_loader, test_loader_len):
             outputs = model(images_1, images_2).squeeze()
             test_loss += criterion(outputs, targets).sum().item()  # sum up batch loss
             pred = torch.where(outputs > 0.5, 1, 0)  # get the index of the max log-probability
+            print("pred", pred)
+            print("targets", targets)
             correct += pred.eq(targets.view_as(pred)).sum().item()
 
     test_loss /= test_loader_len
 
-    # for the 1st epoch, the average loss is 0.0001 and the accuracy 97-98%
-    # using default settings. After completing the 10th epoch, the average
-    # loss is 0.0000 and the accuracy 99.5-100% using default settings.
+    # With cats and dogs, can achieve 95% accuracy in the first epoch.
+    # But for some reason, does not work with the Kitchen Pot category.
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, test_loader_len,
         100. * correct / test_loader_len))
@@ -250,7 +251,7 @@ def main():
 
     batch_size = 64
     validation_split = 0.2
-    test_split = 0.2
+    test_split = 0
     shuffle_dataset = True
     random_seed= 42
     epochs = 20
@@ -307,6 +308,7 @@ def main():
     scheduler = StepLR(optimizer, step_size=1)
     for epoch in tqdm(range(1, epochs + 1)):
         train(model, device, train_dataloader, optimizer, epoch)
+        test(model, device, train_dataloader, test_loader_len=len(train_indices))
         test(model, device, val_dataloader, test_loader_len=len(val_indices))
         scheduler.step()
 

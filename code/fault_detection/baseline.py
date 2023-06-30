@@ -64,7 +64,7 @@ cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/a
 flower_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/flower_photos'
 data_dir = '/Users/bprovan/Desktop/gen_images_640/'
 data_dir = '/Users/bprovan/Desktop/glasses_640/'
-missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0/KitchenPot/'
+missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0/Eyeglasses/'
 
 # pass in the transform for the pretrained model
 # ds = custom_dataset.MissingPartDataset(img_dir=data_dir, transforms=preprocess)

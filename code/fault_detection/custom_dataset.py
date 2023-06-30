@@ -186,15 +186,16 @@ class SiameseDatasetSingleCategory(Dataset):
 
         # We just have positive and negative images
         for img_path in self.imgs_paths:
-            label_str = img_path.split('/')[-1].split('_')[0]
+            label_str_base = img_path.split('/')[-1].split('_')[0]
+            # later this will be important for multi-class class splitting, the id of the removed part. E.g. leg 0, leg 1 ...
+            label_str_part_num = img_path.split('/')[-1].split('_')[1]
 
             # for now just binary classification, we only care about seperating the correct from the faulty classes
-            if label_str == 'orig':
+            if label_str_base == 'orig':
                 # label = torch.zeros((1), dtype=torch.float32)
                 self.groups[0].append(img_path)
             else:
                 self.groups[1].append(img_path)
-
 
     def __getitem__(self, idx):
         """
@@ -239,7 +240,7 @@ class SiameseDatasetSingleCategory(Dataset):
             img_2 = Image.open(img_path_2).convert("RGB")
 
             # set the label for this example to be positive (1), similarity of 1
-            target = torch.tensor(1, dtype=torch.float)
+            target = torch.tensor(0, dtype=torch.float)
         
         # different class
         else:
@@ -262,7 +263,7 @@ class SiameseDatasetSingleCategory(Dataset):
             img_2 = Image.open(img_path_2).convert("RGB")
 
             # set the label for this example to be negative (0)
-            target = torch.tensor(0, dtype=torch.float)
+            target = torch.tensor(1, dtype=torch.float)
 
         if self.transforms is not None:
             img_1 = self.transforms(img_1)
@@ -274,9 +275,6 @@ class SiameseDatasetSingleCategory(Dataset):
     def __len__(self):
         return len(self.imgs_paths)
     
-
- 
-
 
 if __name__ == "__main__":
     # verify the dataset
