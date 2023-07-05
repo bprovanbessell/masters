@@ -276,6 +276,91 @@ class SiameseDatasetSingleCategory(Dataset):
         return len(self.imgs_paths)
     
 
+    
+class TripletDatasetCatsDogs(Dataset):
+
+    def __init__(self, img_dir, transforms):
+        self.img_dir = img_dir
+
+        self.transforms = transforms
+
+        self.imgs_paths = glob.glob(img_dir + '/*/*.jpg')
+        # get the labels of the images paths, this is needed for the selection stage
+        self.groups = {0:[],
+                       1:[]}
+        self.labels = []
+
+        # We just have positive and negative images
+        for img_path in self.imgs_paths:
+            label_str = img_path.split('/')[-1].split('.')[0]
+
+            # for now just binary classification
+            if label_str == 'cat':
+                # label = torch.zeros((1), dtype=torch.float32)
+                self.groups[0].append(img_path)
+                self.labels.append(0)
+            else:
+                self.groups[1].append(img_path)
+                self.labels.append(1)
+
+
+    def __getitem__(self, idx):
+        """
+            For every example, we will select two images. There are two cases, 
+            positive and negative examples. For positive examples, we will have two 
+            images from the same class. For negative examples, we will have two images 
+            from different classes.
+
+            Given an index, if the index is even, we will pick the second image from the same class, 
+            but it won't be the same image we chose for the first class. This is used to ensure the positive
+            example isn't trivial as the network would easily distinguish the similarity between same images. However,
+            if the network were given two different images from the same class, the network will need to learn 
+            the similarity between two different images representing the same class. If the index is odd, we will 
+            pick the second image from a different class than the first image.
+
+            Randomly
+        """
+
+        anchor_path, label = self.imgs_paths[idx], self.labels[idx]
+        positive_label = label
+        negative_label = abs(label-1)
+
+        # get the anchor image
+        anchor_img = Image.open(anchor_path).convert("RGB")
+
+        # get random positive image
+        random_index_pos = random.randint(0, len(self.groups[positive_label]) -1)
+            
+        # ensure that the index of the second image isn't the same as the first image
+        while self.groups[positive_label][random_index_pos] == anchor_path:
+            random_index_pos = random.randint(0, len(self.groups[positive_label]) -1)
+        
+        # pick the index to get the second image
+        img_path_pos = self.groups[positive_label][random_index_pos]
+        img_pos = Image.open(img_path_pos).convert("RGB")
+
+        # get random negative image
+        random_index_neg = random.randint(0, len(self.groups[negative_label]) -1)
+        
+        # pick the index to get the second image
+        img_path_neg = self.groups[negative_label][random_index_neg]
+
+        # get the second image
+        img_neg = Image.open(img_path_neg).convert("RGB")
+
+        if self.transforms is not None:
+            anchor_img = self.transforms(anchor_img)
+            img_pos = self.transforms(img_pos)
+            img_neg = self.transforms(img_neg)
+
+        return anchor_img, img_pos, img_neg
+
+    
+    def __len__(self):
+        return len(self.imgs_paths)
+   
+    
+
 if __name__ == "__main__":
     # verify the dataset
     data_dir = '/Users/bprovan/Desktop/glasses_basic/'
