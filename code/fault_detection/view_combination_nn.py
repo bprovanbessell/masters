@@ -1,60 +1,57 @@
-# Siamese NN to perform image similarity
-# Take the input of two images, and then do a comparison between them. 
-# The network is composed of two identical networks, one for each input.
-# The output of each network is concatenated and passed to a linear layer. 
-# The output of the linear layer passed through a sigmoid function.
-# `"FaceNet" <https://arxiv.org/pdf/1503.03832.pdf>`_ is a variant of the Siamese network.
-# This implementation varies from FaceNet as we use the `ResNet-18` model from
-# `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_ as our feature extractor.
-# In addition, we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
-# based on https://github.com/pytorch/examples/blob/main/siamese_network/main.py
+# Architecture like a Siamese NN
+# Have a feature extraction network, Generate 12 feature sets for the comparison -> Hakan said to average pool them (how exactly??) 
+# That doesnt work over feature maps...
 
-import argparse, random, copy
+# Or take some architecture from the 3D classification papers!?
+
+# INITIAL BASELINE, DO AS IN SIAMESE NN: CONCATENATE FEATURES, USE LINEAR NETWORK TO COMPARE THEM ALL!
+
+# MVCNN VIEW POOLING
+
+# ROTATIONNET TYPE VIEW COMBINATIONS
+
 import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-import torchvision
-from torch.utils.data import Dataset
-from torchvision import datasets
-from torchvision import transforms as T
-from torch.optim.lr_scheduler import StepLR
-import glob
-from tqdm import tqdm
 
 from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from torch.utils.data.sampler import SubsetRandomSampler
+from tqdm import tqdm
 
-from PIL import Image
-from custom_dataset import SiameseDatasetSingleCategory, SiameseDatasetCatsDogs, SiameseDatasetPerObject
+from custom_dataset import ViewCombDataset
 
+class ViewCombNetwork(nn.Module):
+    def __init__(self, n_views=12):
+        super(ViewCombNetwork, self).__init__()
 
-class SiameseNetwork(nn.Module):
-    def __init__(self):
-        super(SiameseNetwork, self).__init__()
+        self.n_views = n_views
         # get resnet model
         # Try with pretrained and non pretraind
         # change that here...
-        weights = ResNet50_Weights.IMAGENET1K_V2
-        # weights = ResNet18_Weights.DEFAULT
+        # Try a more basic resnet18, cheaper
+        # weights = ResNet50_Weights.IMAGENET1K_V2
+        weights = ResNet18_Weights.DEFAULT
         preprocess = weights.transforms()
-        self.resnet_model = resnet50(weights=weights)
+        self.resnet_model = resnet18(weights=weights)
         # model = resnet18(weights=ResNet18_Weights.DEFAULT)
 
         # freeze the weights, set them to be non trainable
         for param in self.resnet_model.parameters():
             param.requires_grad = False
 
-        # over-write the first conv layer to be able to read MNIST images
-        # as resnet18 reads (3,x,x) where 3 is RGB channels
-        # whereas MNIST has (1,x,x) where 1 is a gray-scale channel
-        # self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.fc_in_features = self.resnet_model.fc.in_features
         
         # remove the last layer of resnet18 (linear layer which is before avgpool layer)
         self.resnet_model = torch.nn.Sequential(*(list(self.resnet_model.children())[:-1]))
+
+        # We want to reduce this to the number of features we have
+        self.view_comb = nn.Sequential(
+            nn.Linear(self.fc_in_features * self.n_views, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, self.fc_in_features),
+        )
 
         # add linear layers to compare between the features of the two images
         self.fc = nn.Sequential(
@@ -79,23 +76,37 @@ class SiameseNetwork(nn.Module):
         output = self.resnet_model(x)
         output = output.view(output.size()[0], -1)
         return output
+    
+    def forward_views(self, view_inputs):
+        y = self.resnet_model(view_inputs)
+        # print(y.shape)
+        # y = y.view((int(view_inputs.shape[0]/self.n_views),self.n_views,y.shape[-3],y.shape[-2],y.shape[-1]))#(8,12,512,7,7)
+        y = y.view((int(view_inputs.shape[0]/self.n_views),self.n_views,y.shape[-3],-1))#(8,12,512,1)
 
+        y = y.view((int(view_inputs.shape[0]/self.n_views), self.n_views * self.fc_in_features))
 
-    def forward(self, input1, input2):
+        # This was done for mvcnn, but it was pretrained as a classifier so
+        # return self.net_2(torch.max(y,1)[0].view(y.shape[0],-1))
+        view_comb = self.view_comb(y)
+
+        return view_comb
+
+    def forward(self, view_inputs, query_image):
         # get two images' features
-        output1 = self.forward_once(input1)
-        output2 = self.forward_once(input2)
+        query_feats = self.forward_once(query_image)
+        # print(query_feats.shape)
+        view_feats = self.forward_views(view_inputs)
+        # print(view_feats.shape)
 
         # concatenate both images' features
-        output = torch.cat((output1, output2), 1)
-
+        output = torch.cat((view_feats, query_feats), 1)
         # pass the concatenation to the linear layers
         output = self.fc(output)
-
         # pass the out of the linear layers to sigmoid layer
         output = self.sigmoid(output)
         
         return output
+    
 
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
@@ -103,16 +114,24 @@ def train(model, device, train_loader, optimizer, epoch):
     # we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
     criterion = nn.BCELoss()
 
-    for batch_idx, ((images_1, images_2), targets) in enumerate(train_loader):
-        images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
+    for batch_idx, ((view_images, query_image), targets) in enumerate(train_loader):
+
+        N,V,C,H,W = view_images.size()
+        # print(N,V,C,H,W)
+        view_images = view_images.view(-1,C,H,W).to(device)
+        # print(view_images.shape)
+
+        # print(query_image.shape)
+
+        view_images, query_image, targets = view_images.to(device), query_image.to(device), targets.to(device)
         optimizer.zero_grad()
-        outputs = model(images_1, images_2).squeeze()
+        outputs = model(view_images, query_image).squeeze()
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
         if batch_idx % 50 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(images_1), len(train_loader.dataset),
+                epoch, batch_idx * len(query_image), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
             # if args.dry_run:
             #     break
@@ -126,9 +145,12 @@ def test(model, device, test_loader, test_loader_len):
     criterion = nn.BCELoss()
 
     with torch.no_grad():
-        for ((images_1, images_2), targets) in test_loader:
-            images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
-            outputs = model(images_1, images_2).squeeze()
+        for ((view_images, query_images), targets) in test_loader:
+            N,V,C,H,W = view_images.size()
+            # print(N,V,C,H,W)
+            view_images = view_images.view(-1,C,H,W).to(device)
+            view_images, query_images, targets = view_images.to(device), query_images.to(device), targets.to(device)
+            outputs = model(view_images, query_images).squeeze()
             test_loss += criterion(outputs, targets).sum().item()  # sum up batch loss
             pred = torch.where(outputs > 0.5, 1, 0)  # get the index of the max log-probability
             # print("pred", pred)
@@ -146,15 +168,15 @@ def test(model, device, test_loader, test_loader_len):
 
 def main():
 
-    batch_size = 64
+    batch_size = 8
     validation_split = 0.2
     test_split = 0
     shuffle_dataset = True
     random_seed= 42
     epochs = 100
 
-    weights = ResNet50_Weights.IMAGENET1K_V2
-    # weights = ResNet18_Weights.DEFAULT
+    # weights = ResNet50_Weights.IMAGENET1K_V2
+    weights = ResNet18_Weights.DEFAULT
     preprocess = weights.transforms()
 
 
@@ -164,12 +186,12 @@ def main():
     print(device)
     cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
+    missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
-    ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
-
-    # a fixed dataset for validation and testing 
+    # ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
+    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', n_views=12, n_samples=12, transforms=preprocess, train=True)
 
     # Creating data indices for training and validation splits:
     dataset_size = len(ds)
@@ -200,17 +222,17 @@ def main():
     test_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
                                         sampler=test_sampler)
 
-    model = SiameseNetwork().to(device)
+    model = ViewCombNetwork().to(device)
     # Maybe change to Adam?
-    optimizer = optim.Adadelta(model.parameters())
+    optimizer = optim.Adam(model.parameters())
 
-    scheduler = StepLR(optimizer, step_size=1)
+    # scheduler = StepLR(optimizer, step_size=1)
     for epoch in tqdm(range(1, epochs + 1)):
         train(model, device, train_dataloader, optimizer, epoch)
         test(model, device, train_dataloader, test_loader_len=len(train_indices))
         test(model, device, val_dataloader, test_loader_len=len(val_indices))
-        scheduler.step()
+        # scheduler.step()
 
 if __name__ == "__main__":
     main()
-
+    

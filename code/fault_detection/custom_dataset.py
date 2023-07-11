@@ -481,6 +481,105 @@ class SiameseDatasetPerObject(Dataset):
         # But we only want the indexes per 
         # return len(self.instance_dirs) * self.n * 2
         return len(self.pairs)
+    
+
+class ViewCombDataset(Dataset):
+    # Try to compare the same objects only?
+    # So for each object, compare it to all the other correct views (combination), and negative views.
+    # A lot of examples actually. 
+    # Keep the training balanced. So for each object, 
+    # We get the 12 reference views -> representation of the 3D object
+
+    # sample n positive views (different from the 12 reference views) as positive pair samples
+
+
+    # sample n negative views -> for negative pair samples.
+
+    # Our anchor (view combination) will always be the same, and then we compare many positive images, and negative images to that.
+
+
+    def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True):
+        self.img_dir = img_dir
+
+        self.transforms = transforms
+        self.n_views = n_views
+        self.n_samples = n_samples
+        self.train = train
+
+        base_dir_instance = os.path.join(img_dir, category, "*")
+        self.instance_dirs = glob.glob(base_dir_instance)
+
+        self.generate_pairs()
+
+    def generate_pairs(self):
+        # We need the reference views
+        # We should have 24 images, so we take the 12 spaced at 30 degrees, so should be at indexes[0,2,4,6,8,10,12,14,16,18,20,22]
+        # eg orig_*Index*
+        self.pairs = []
+        self.targets = []
+        for index in range(len(self.instance_dirs)):
+            # get the reference views first.
+            # Actually don't we want to parameterise the reference views? For the moment it is fixed at 12
+            reference_views = []
+            instance_dir = self.instance_dirs[index]
+
+            groups = {0:[],
+                    1:[]}
+
+            for img_path in glob.glob(os.path.join(instance_dir, "*.png")):
+
+                label_str_base = img_path.split('/')[-1].split('_')[0]
+                # later this will be important for multi-class class splitting, the id of the removed part. E.g. leg 0, leg 1 ...
+                label_str_part_num = img_path.split('/')[-1].split('_')[1]
+
+                # for now just binary classification, we only care about seperating the correct from the faulty classes
+                if label_str_base == 'orig':
+                    if int(label_str_part_num[0:-4]) % 2 == 0:
+                        # Reference view
+                        reference_views.append(img_path)
+                    else:
+                        groups[0].append(img_path)
+                else:
+                    groups[1].append(img_path)
+
+            # Now get positive and negative samples
+            pos_sample = np.random.choice(len(groups[0]), size=self.n_samples, replace=False)
+            neg_sample = np.random.choice(len(groups[1]), size=self.n_samples, replace=False)
+
+            # Pair for each sample
+            for pos_index in pos_sample:
+
+                self.pairs.append((reference_views, groups[0][pos_index]))
+                # Add a positive label(they are the same), there should be no distance between tehm
+                target = torch.tensor(0, dtype=torch.float)
+                self.targets.append(target)
+            
+            for neg_index in neg_sample:
+
+                self.pairs.append((reference_views, groups[1][neg_index]))
+                # Add a positive label(they are the same), there should be no distance between tehm
+                target = torch.tensor(1, dtype=torch.float)
+                self.targets.append(target)
+
+    def __getitem__(self, index):
+
+        if self.train and index == 0:
+            self.generate_pairs()
+
+        view_img_paths, img_path_2 = self.pairs[index]
+        
+        view_imgs = [Image.open(view_img_path).convert("RGB") for view_img_path in view_img_paths]
+        img_2 = Image.open(img_path_2).convert("RGB")
+
+
+        if self.transforms is not None:
+            view_imgs_2 = torch.stack([self.transforms(img) for img in view_imgs])
+            img_2 = self.transforms(img_2)
+
+        return (view_imgs_2, img_2), self.targets[index]
+
+    def __len__(self):
+        return len(self.pairs)
         
     
 class TripletDatasetCatsDogs(Dataset):
