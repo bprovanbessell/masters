@@ -394,7 +394,7 @@ class SiameseDatasetPerObject(Dataset):
     # sample n negative views -> for each compare it to a random positive view and a random (other) negative view
 
 
-    def __init__(self, img_dir: str, category: str, n:int=12, transforms=None, train:bool=True):
+    def __init__(self, img_dir: str, category: str, n:int=12, transforms=None, train:bool=True, train_split=0.7, seed:int=42):
         self.img_dir = img_dir
 
         self.transforms = transforms
@@ -403,32 +403,41 @@ class SiameseDatasetPerObject(Dataset):
 
         base_dir_instance = os.path.join(img_dir, category, "*")
         self.instance_dirs = glob.glob(base_dir_instance)
+        self.rng = np.random.default_rng(seed)
 
-        self.generate_pairs()
+        self.test_pairs, self.test_targets = self.generate_pairs()
+        self.pairs, self.targets = self.generate_pairs()
+        self.reset_counter = 0
+        self.reset_num = int(len(self.test_pairs)*train_split)
         # get the labels of the images paths, this is needed for the selection stage
 
 
     def __getitem__(self, index):
 
-        if self.train and index == 0:
-            self.generate_pairs()
+        if self.reset_counter == self.reset_num:
+            self.reset_counter = 0
+            
+            if self.train:
+                self.pairs, self.targets = self.generate_pairs()
+            else:
+                self.pairs, self.targets = self.test_pairs, self.test_targets
 
         img_path_1, img_path_2 = self.pairs[index]
         
         img_1 = Image.open(img_path_1).convert("RGB")
         img_2 = Image.open(img_path_2).convert("RGB")
 
-
         if self.transforms is not None:
             img_1 = self.transforms(img_1)
             img_2 = self.transforms(img_2)
 
+        self.reset_counter += 1
         return (img_1, img_2), self.targets[index]
         
     def generate_pairs(self):
 
-        self.pairs = []
-        self.targets = []
+        pairs = []
+        targets = []
         for index in range(len(self.instance_dirs)):
             instance_dir = self.instance_dirs[index]
 
@@ -449,38 +458,39 @@ class SiameseDatasetPerObject(Dataset):
                     groups[1].append(img_path)
 
             # For each positive img in the sample:
-            pos_sample = np.random.choice(len(groups[0]), size=self.n, replace=False)
+            pos_sample = self.rng.choice(len(groups[0]), size=self.n, replace=False)
             for pos_anchor_index in pos_sample:
                 # get a random positive pair, that is different
-                pos_index = np.random.randint(0, len(groups[0]))
+                pos_index = self.rng.integers(0, len(groups[0]))
 
                 while pos_index == pos_anchor_index:
-                    pos_index = np.random.randint(0, len(groups[0]))
+                    pos_index = self.rng.integers(0, len(groups[0]))
 
-                self.pairs.append((groups[0][pos_anchor_index], groups[0][pos_index]))
+                pairs.append((groups[0][pos_anchor_index], groups[0][pos_index]))
                 # Add a positive label(they are the same), there should be no distance between tehm
                 target = torch.tensor(0, dtype=torch.float)
-                self.targets.append(target)
+                targets.append(target)
 
                 # now get a random negative pair
             for pos_anchor_index in pos_sample:
                 # get a random positive pair, that is different
-                neg_index = np.random.randint(0, len(groups[0]))
+                neg_index = self.rng.integers(0, len(groups[0]))
 
-                self.pairs.append((groups[0][pos_anchor_index], groups[1][neg_index]))
+                pairs.append((groups[0][pos_anchor_index], groups[1][neg_index]))
 
                 target = torch.tensor(1, dtype=torch.float)
-                self.targets.append(target)
+                targets.append(target)
 
             # Could do here where we generate for randomly 
             
+        return pairs, targets
 
     def __len__(self):
         # number of pairs, for each instance we have the number of samples, times 2 (positive and negative)
         # * self.n * 2
         # But we only want the indexes per 
         # return len(self.instance_dirs) * self.n * 2
-        return len(self.pairs)
+        return len(self.test_pairs)
     
 
 class ViewCombDataset(Dataset):
@@ -498,7 +508,7 @@ class ViewCombDataset(Dataset):
     # Our anchor (view combination) will always be the same, and then we compare many positive images, and negative images to that.
 
 
-    def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True):
+    def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, seed:int=42):
         self.img_dir = img_dir
 
         self.transforms = transforms
@@ -509,14 +519,17 @@ class ViewCombDataset(Dataset):
         base_dir_instance = os.path.join(img_dir, category, "*")
         self.instance_dirs = glob.glob(base_dir_instance)
 
-        self.generate_pairs()
+        self.rng = np.random.default_rng(seed)
+
+        # Do this once at the start so they don't change
+        self.test_pairs, self.test_targets = self.generate_pairs()
 
     def generate_pairs(self):
         # We need the reference views
         # We should have 24 images, so we take the 12 spaced at 30 degrees, so should be at indexes[0,2,4,6,8,10,12,14,16,18,20,22]
         # eg orig_*Index*
-        self.pairs = []
-        self.targets = []
+        pairs = []
+        targets = []
         for index in range(len(self.instance_dirs)):
             # get the reference views first.
             # Actually don't we want to parameterise the reference views? For the moment it is fixed at 12
@@ -543,28 +556,34 @@ class ViewCombDataset(Dataset):
                     groups[1].append(img_path)
 
             # Now get positive and negative samples
-            pos_sample = np.random.choice(len(groups[0]), size=self.n_samples, replace=False)
-            neg_sample = np.random.choice(len(groups[1]), size=self.n_samples, replace=False)
+            pos_sample = self.rng.choice(len(groups[0]), size=self.n_samples, replace=False)
+            neg_sample = self.rng.choice(len(groups[1]), size=self.n_samples, replace=False)
 
             # Pair for each sample
             for pos_index in pos_sample:
 
-                self.pairs.append((reference_views, groups[0][pos_index]))
+                pairs.append((reference_views, groups[0][pos_index]))
                 # Add a positive label(they are the same), there should be no distance between tehm
                 target = torch.tensor(0, dtype=torch.float)
-                self.targets.append(target)
+                targets.append(target)
             
             for neg_index in neg_sample:
 
-                self.pairs.append((reference_views, groups[1][neg_index]))
+                pairs.append((reference_views, groups[1][neg_index]))
                 # Add a positive label(they are the same), there should be no distance between tehm
                 target = torch.tensor(1, dtype=torch.float)
                 self.targets.append(target)
 
+        return pairs, targets
+
     def __getitem__(self, index):
 
-        if self.train and index == 0:
-            self.generate_pairs()
+        if index == 0:
+            
+            if self.train:
+                self.pairs, self.targets = self.generate_pairs()
+            else:
+                self.pairs, self.targets = self.test_pairs, self.test_targets
 
         view_img_paths, img_path_2 = self.pairs[index]
         

@@ -169,16 +169,16 @@ def test(model, device, test_loader, test_loader_len):
 def main():
 
     batch_size = 8
-    validation_split = 0.2
-    test_split = 0
+    validation_split = 0.1
+    test_split = 0.2
     shuffle_dataset = True
     random_seed= 42
     epochs = 100
+    seed = 44
 
     # weights = ResNet50_Weights.IMAGENET1K_V2
     weights = ResNet18_Weights.DEFAULT
     preprocess = weights.transforms()
-
 
     device = "mps" if torch.backends.mps.is_available() \
     else "gpu" if torch.cuda.is_available() else "cpu"
@@ -191,9 +191,13 @@ def main():
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
     # ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
-    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', n_views=12, n_samples=12, transforms=preprocess, train=True)
+    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', 
+                         n_views=12, n_samples=12, transforms=preprocess, train=True, seed=seed)
+    test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', 
+                         n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
 
     # Creating data indices for training and validation splits:
+    rng = np.random.default_rng(seed)
     dataset_size = len(ds)
     indices = list(range(dataset_size))
     val_split_index = int(np.floor(dataset_size * (1-(validation_split + test_split))))
@@ -201,10 +205,9 @@ def main():
 
     print(val_split_index)
     print(test_split_index)
-    if shuffle_dataset :
-        np.random.seed(random_seed)
-        np.random.shuffle(indices)
-    train_indices, val_indices, test_indices =indices[:val_split_index], indices[val_split_index:test_split_index], indices[test_split_index:]
+    if shuffle_dataset:
+        rng.shuffle(indices)
+    train_indices, val_indices, test_indices = indices[:val_split_index], indices[val_split_index:test_split_index], indices[test_split_index:]
 
     print("lengths")
     print(len(train_indices), len(val_indices), len(test_indices))
@@ -217,10 +220,13 @@ def main():
     # Should work for the basic train test split
     train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size, 
                                     sampler=train_sampler)
-    val_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+    val_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
                                         sampler=val_sampler)
-    test_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+    test_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
                                         sampler=test_sampler)
+    
+    print(len(train_dataloader))
+    print(len(val_dataloader))
 
     model = ViewCombNetwork().to(device)
     # Maybe change to Adam?

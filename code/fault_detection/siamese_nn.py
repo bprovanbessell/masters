@@ -117,7 +117,7 @@ def train(model, device, train_loader, optimizer, epoch):
             # if args.dry_run:
             #     break
 
-def test(model, device, test_loader, test_loader_len):
+def test(model, device, test_loader, test_loader_len, set='Test'):
     model.eval()
     test_loss = 0
     correct = 0
@@ -139,19 +139,20 @@ def test(model, device, test_loader, test_loader_len):
 
     # With cats and dogs, can achieve 95% accuracy in the first epoch.
     # But for some reason, does not work with the Kitchen Pot category.
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, test_loader_len,
+    print('\n{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        set, test_loss, correct, test_loader_len,
         100. * correct / test_loader_len))
     
 
 def main():
 
     batch_size = 64
-    validation_split = 0.2
-    test_split = 0
+    validation_split = 0.1
+    test_split = 0.2
     shuffle_dataset = True
     random_seed= 42
-    epochs = 100
+    epochs = 10
+    seed = 44
 
     weights = ResNet50_Weights.IMAGENET1K_V2
     # weights = ResNet18_Weights.DEFAULT
@@ -167,11 +168,15 @@ def main():
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
-    ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
+    category = "KitchenPot"
+    # category = "EyeGlasses"
 
+    ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=True, train_split=0.7, seed=seed)
+    test_ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
     # a fixed dataset for validation and testing 
 
     # Creating data indices for training and validation splits:
+    rng = np.random.default_rng(seed)
     dataset_size = len(ds)
     indices = list(range(dataset_size))
     val_split_index = int(np.floor(dataset_size * (1-(validation_split + test_split))))
@@ -179,10 +184,11 @@ def main():
 
     print(val_split_index)
     print(test_split_index)
-    if shuffle_dataset :
-        np.random.seed(random_seed)
-        np.random.shuffle(indices)
+    if shuffle_dataset:
+        rng.shuffle(indices)
     train_indices, val_indices, test_indices =indices[:val_split_index], indices[val_split_index:test_split_index], indices[test_split_index:]
+
+    reset_index = train_indices[0]
 
     print("lengths")
     print(len(train_indices), len(val_indices), len(test_indices))
@@ -195,9 +201,9 @@ def main():
     # Should work for the basic train test split
     train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size, 
                                     sampler=train_sampler)
-    val_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+    val_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
                                         sampler=val_sampler)
-    test_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+    test_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
                                         sampler=test_sampler)
 
     model = SiameseNetwork().to(device)
@@ -207,9 +213,11 @@ def main():
     scheduler = StepLR(optimizer, step_size=1)
     for epoch in tqdm(range(1, epochs + 1)):
         train(model, device, train_dataloader, optimizer, epoch)
-        test(model, device, train_dataloader, test_loader_len=len(train_indices))
-        test(model, device, val_dataloader, test_loader_len=len(val_indices))
+        test(model, device, train_dataloader, test_loader_len=len(train_indices), set='Train')
+        test(model, device, val_dataloader, test_loader_len=len(val_indices), set='Validation')
         scheduler.step()
+
+    test(model, device, test_dataloader, test_loader_len=len(test_indices), set='Test')
 
 if __name__ == "__main__":
     main()
