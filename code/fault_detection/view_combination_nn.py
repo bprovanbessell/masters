@@ -173,7 +173,7 @@ def main():
     test_split = 0.2
     shuffle_dataset = True
     random_seed= 42
-    epochs = 100
+    epochs = 10
     seed = 44
 
     # weights = ResNet50_Weights.IMAGENET1K_V2
@@ -190,7 +190,7 @@ def main():
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
     # ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
-    category = "KitchenPot"
+    category = "EyeGlasses"
     ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=True, seed=seed)
     test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
@@ -238,6 +238,7 @@ def main():
         test(model, device, train_dataloader, test_loader_len=len(train_indices))
         test(model, device, val_dataloader, test_loader_len=len(val_indices))
         # scheduler.step()
+    test(model, device, test_dataloader, test_loader_len=len(test_indices))
 
 if __name__ == "__main__":
     main()
