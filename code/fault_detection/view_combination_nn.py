@@ -173,7 +173,7 @@ def main():
     test_split = 0.2
     shuffle_dataset = True
     random_seed= 42
-    epochs = 100
+    epochs = 10
     seed = 44
 
     # weights = ResNet50_Weights.IMAGENET1K_V2
@@ -184,16 +184,16 @@ def main():
     else "gpu" if torch.cuda.is_available() else "cpu"
 
     print(device)
-    cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
     # ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
-    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', 
+    category = "EyeGlasses"
+    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=True, seed=seed)
-    test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', 
+    test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
 
     # Creating data indices for training and validation splits:
@@ -238,6 +238,7 @@ def main():
         test(model, device, train_dataloader, test_loader_len=len(train_indices))
         test(model, device, val_dataloader, test_loader_len=len(val_indices))
         # scheduler.step()
+    test(model, device, test_dataloader, test_loader_len=len(test_indices))
 
 if __name__ == "__main__":
     main()
