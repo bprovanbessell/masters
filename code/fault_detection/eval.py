@@ -14,7 +14,7 @@ def evaluate_binary(dataloader, model, device, set="Test"):
 
     # set up metrics
     acc_metric = torchmetrics.Accuracy(task='binary').to(device)
-    acc_sample_metric = torchmetrics.Accuracy(task='binary', multidim_average='samplewise').to(device)
+    # acc_sample_metric = torchmetrics.Accuracy(task='binary', multidim_average='samplewise').to(device)
     prec_metric = torchmetrics.Precision(task='binary', average='none').to(device)
     confmat = torchmetrics.ConfusionMatrix(task="binary", num_classes=2).to(device)
 
@@ -95,3 +95,5 @@ def evaluate_multiclass(num_classes: int, dataloader, model, device, set="Test")
         print("Confusion matrix: ", confusion_matrix)
 
         return total_acc
+    
+

@@ -184,16 +184,16 @@ def main():
     else "gpu" if torch.cuda.is_available() else "cpu"
 
     print(device)
-    cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
     # ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
-    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', 
+    category = "KitchenPot"
+    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=True, seed=seed)
-    test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category='KitchenPot', 
+    test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
 
     # Creating data indices for training and validation splits:

@@ -168,8 +168,8 @@ def main():
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
-    category = "KitchenPot"
-    # category = "EyeGlasses"
+    # category = "KitchenPot"
+    category = "EyeGlasses"
 
     ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=True, train_split=0.7, seed=seed)
     test_ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)

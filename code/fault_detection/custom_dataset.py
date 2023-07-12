@@ -508,7 +508,7 @@ class ViewCombDataset(Dataset):
     # Our anchor (view combination) will always be the same, and then we compare many positive images, and negative images to that.
 
 
-    def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, seed:int=42):
+    def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, train_split=0.7, seed:int=42):
         self.img_dir = img_dir
 
         self.transforms = transforms
@@ -523,6 +523,9 @@ class ViewCombDataset(Dataset):
 
         # Do this once at the start so they don't change
         self.test_pairs, self.test_targets = self.generate_pairs()
+        self.pairs, self.targets = self.generate_pairs()
+        self.reset_counter = 0
+        self.reset_num = int(len(self.test_pairs)*train_split)
 
     def generate_pairs(self):
         # We need the reference views
@@ -572,13 +575,15 @@ class ViewCombDataset(Dataset):
                 pairs.append((reference_views, groups[1][neg_index]))
                 # Add a positive label(they are the same), there should be no distance between tehm
                 target = torch.tensor(1, dtype=torch.float)
-                self.targets.append(target)
+                targets.append(target)
 
         return pairs, targets
 
     def __getitem__(self, index):
 
-        if index == 0:
+        if self.reset_counter == self.reset_num:
+            self.reset_counter = 0
+            print("RESET")
             
             if self.train:
                 self.pairs, self.targets = self.generate_pairs()
@@ -590,15 +595,15 @@ class ViewCombDataset(Dataset):
         view_imgs = [Image.open(view_img_path).convert("RGB") for view_img_path in view_img_paths]
         img_2 = Image.open(img_path_2).convert("RGB")
 
-
         if self.transforms is not None:
             view_imgs_2 = torch.stack([self.transforms(img) for img in view_imgs])
             img_2 = self.transforms(img_2)
 
+        self.reset_counter += 1
         return (view_imgs_2, img_2), self.targets[index]
 
     def __len__(self):
-        return len(self.pairs)
+        return len(self.test_pairs)
         
     
 class TripletDatasetCatsDogs(Dataset):
