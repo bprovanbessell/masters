@@ -21,6 +21,8 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from tqdm import tqdm
 
 from custom_dataset import ViewCombDataset
+from trainer import train_multiview_epoch
+from eval import evaluate_multiview
 
 class ViewCombNetwork(nn.Module):
     def __init__(self, n_views=12):
@@ -190,7 +192,7 @@ def main():
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
     # ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category="EyeGlasses", n=8, transforms=preprocess, train=False)
-    category = "EyeGlasses"
+    category = "KitchenPot"
     ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=True, seed=seed)
     test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
@@ -231,14 +233,18 @@ def main():
     model = ViewCombNetwork().to(device)
     # Maybe change to Adam?
     optimizer = optim.Adam(model.parameters())
+    criterion = nn.BCELoss()
 
     # scheduler = StepLR(optimizer, step_size=1)
     for epoch in tqdm(range(1, epochs + 1)):
-        train(model, device, train_dataloader, optimizer, epoch)
-        test(model, device, train_dataloader, test_loader_len=len(train_indices))
-        test(model, device, val_dataloader, test_loader_len=len(val_indices))
+        # train(model, device, train_dataloader, optimizer, epoch)
+        train_multiview_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch)
+
+        # test(model, device, train_dataloader, test_loader_len=len(train_indices))
+        # test(model, device, val_dataloader, test_loader_len=len(val_indices))
         # scheduler.step()
-    test(model, device, test_dataloader, test_loader_len=len(test_indices))
+    # test(model, device, test_dataloader, test_loader_len=len(test_indices))
+    evaluate_multiview(model, device, test_dataloader, criterion, set="Test")
 
 if __name__ == "__main__":
     main()
