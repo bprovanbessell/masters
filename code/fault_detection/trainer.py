@@ -6,11 +6,11 @@
 # Save the, train loss, train accuracy, validation loss, validation accuracy
 
 import torch
-import torch.nn as nn
 import torchmetrics
 
 from eval import evaluate_multiview, evaluate_binary, ModelSaver
 from logger import MetricLogger
+
 
 def train_multiview_epoch(model, device, train_loader, val_loader, optimizer, criterion, epoch, 
                           model_saver:ModelSaver=None, metric_logger:MetricLogger=None):
@@ -41,13 +41,12 @@ def train_multiview_epoch(model, device, train_loader, val_loader, optimizer, cr
         # if batch_idx % 50 == 0:
     train_acc = acc_metric.compute()
     acc_metric.reset()
-    print('Train Epoch: {} \tLoss: {:.6f} \tAccuracy: {:.4f}%'.format(epoch, loss.item(), 100 * train_acc.item()))
+    print('Train Epoch: {} \nLoss: {:.6f} \tAccuracy: {:.4f}%'.format(epoch, loss.item(), 100 * train_acc.item()))
     
     val_acc, val_loss = evaluate_multiview(model, device, val_loader, criterion, set="Validation")  
 
     model_saver.save_model(model, val_acc, epoch, optimizer)
-    metric_logger.add_epoch_metrics(train_acc, loss.item(), val_acc, val_loss)
-    
+    metric_logger.add_epoch_metrics(train_acc, loss.item(), val_acc, val_loss)    
 
 
 def train_binary_baseline_epoch(model, device, train_loader, val_loader, optimizer, criterion, epoch, 
@@ -84,7 +83,7 @@ def train_binary_baseline_epoch(model, device, train_loader, val_loader, optimiz
     train_acc = acc_metric.compute()
     acc_metric.reset()
     print(train_acc)
-    print('Train Epoch: {} \tLoss: {:.6f} \tAccuracy: {}'.format(epoch, loss.item(), (100 * train_acc.item())))
+    print('Train Epoch: {} \nLoss: {:.6f} \tAccuracy: {:.4f}%'.format(epoch, loss.item(), 100 * train_acc.item()))
     
     val_acc, val_loss = evaluate_binary(model, device, val_loader, criterion, set="Validation")  
 

@@ -48,15 +48,15 @@ def evaluate_binary(model, device, dataloader, criterion, set="Test"):
         test_loss /= total_items
         # total_acc_sample = acc_sample_metric.compute()
         print(set, " set:")
-        print('Average loss: {:.4f}, Correct: {}/{}\n'.format(test_loss, correct, total_items))
+        print('Average loss: {:.4f}, Correct: {}/{}'.format(test_loss, correct, total_items))
 
-        print(" accuracy: {:.4f}, precision: {:.4f}".format(total_acc.item(), precision.item()))
+        print("Accuracy: {:.4f}%, Precision: {:.4f}".format((100 * total_acc.item()), precision.item()))
         # class 0 [True positive, False negative]
         # class 1 [False Positive, True Negative]
         class0_acc = confusion_matrix[0][0]/(confusion_matrix[0][1] + confusion_matrix[0][0])
         class1_acc = confusion_matrix[1][1]/(confusion_matrix[1][1] + confusion_matrix[1][0])
 
-        print("Class 0 accuracy: ", class0_acc.item(), "Class 1 accuracy: ", class1_acc.item())
+        print("Class 0 accuracy: {:.4f}, Class 1 accuracy: {:.4f}".format(class0_acc.item(), class1_acc.item()))
         print("Confusion matrix: ", confusion_matrix)
 
         return total_acc.item(), test_loss
