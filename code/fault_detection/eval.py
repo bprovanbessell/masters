@@ -10,13 +10,16 @@ def preds_y_list(dataloader, model, device):
         pred = model(x)
 
 
-def evaluate_binary(dataloader, model, device, set="Test"):
+def evaluate_binary(model, device, dataloader, criterion, set="Test"):
 
     # set up metrics
     acc_metric = torchmetrics.Accuracy(task='binary').to(device)
     # acc_sample_metric = torchmetrics.Accuracy(task='binary', multidim_average='samplewise').to(device)
     prec_metric = torchmetrics.Precision(task='binary', average='none').to(device)
     confmat = torchmetrics.ConfusionMatrix(task="binary", num_classes=2).to(device)
+    test_loss = 0
+    total_items = 0
+    correct = 0
 
     with torch.no_grad():
     # set the model in evaluation mode
@@ -28,21 +31,26 @@ def evaluate_binary(dataloader, model, device, set="Test"):
             # totalValLoss += criterion(pred, y)
             # calculate the number of correct predictions
             # threshold of 0.5
+            test_loss += criterion(pred, y).sum().item()
             pred_class = torch.sigmoid(pred).round()
             preds_sigmoid = torch.sigmoid(pred)
             acc = acc_metric(preds_sigmoid, y)
             # acc_sample = acc_sample_metric(preds_sigmoid, pred_class)
             prec = prec_metric(preds_sigmoid, y)
             conf = confmat(preds_sigmoid, y)
-            # Correct += (pred_class == y).type(torch.float).sum().item()
+            correct += (pred_class == y).type(torch.float).sum().item()
+
+            total_items += len(y)
 
         total_acc = acc_metric.compute()
         precision = prec_metric.compute()
         confusion_matrix = confmat.compute()
+        test_loss /= total_items
         # total_acc_sample = acc_sample_metric.compute()
+        print(set, " set:")
+        print('Average loss: {:.4f}, Correct: {}/{}\n'.format(test_loss, correct, total_items))
 
-        print("{} accuracy: {:.4f}, {} precision: {:.4f}".format(set, total_acc.item(), set, precision.item()))
-        # print("Accuracies per class: ", total_acc_sample)
+        print(" accuracy: {:.4f}, precision: {:.4f}".format(total_acc.item(), precision.item()))
         # class 0 [True positive, False negative]
         # class 1 [False Positive, True Negative]
         class0_acc = confusion_matrix[0][0]/(confusion_matrix[0][1] + confusion_matrix[0][0])
@@ -51,7 +59,8 @@ def evaluate_binary(dataloader, model, device, set="Test"):
         print("Class 0 accuracy: ", class0_acc.item(), "Class 1 accuracy: ", class1_acc.item())
         print("Confusion matrix: ", confusion_matrix)
 
-        return total_acc
+        return total_acc.item(), test_loss
+    
 
 def evaluate_multiclass(num_classes: int, dataloader, model, device, set="Test"):
 
@@ -147,3 +156,30 @@ def evaluate_multiview(model, device, test_loader, criterion, set:str="Test"):
     print("Confusion matrix: ", confusion_matrix)
 
     return total_acc.item(), test_loss
+
+
+class ModelSaver():
+    def __init__(self, save_path) -> None:
+        self.best_val_acc = 0
+        self.save_path = save_path
+
+    def save_model(self, model, val_acc, epoch, optimizer):
+        if val_acc > self.best_val_acc:
+
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                }, self.save_path)
+            
+    def load_model(self, model, optimizer):
+
+        checkpoint = torch.load(self.save_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch = checkpoint['epoch']
+
+        # model.eval()
+        # # - or -
+        # model.train()
+        return model

@@ -5,20 +5,10 @@ This will form the baseline binary fault classification.
 - Most basic one which takes in one image as imput, and trys to detect whether it has a part missing or not (fault)
 - base it off https://pytorch.org/tutorials/intermediate/torchvision_tutorial.html
 
-try this first
-https://www.kaggle.com/code/yerramvarun/fine-tuning-faster-rcnn-using-pytorch
-
-
-- feature vector stacking
-One that takes in multiple images, a feature vector is taken from each of them, and they are stacked together, 
-and then a classifier is trained on them.
-
-There is also yolov6 in pytorch, https://github.com/meituan/YOLOv6/blob/main/turtorial.ipynb
-Could use that as another feature extractor (This time trained on COCO), so higher resolution. (COCO 640 x 336?) something like that
-
 there is timm for imagenet stuff
 https://huggingface.co/docs/timm/quickstart, lots of already existing and pretrained models. Probably the best/easiest way. 
-They include mostly updated and available models (I can actually use it, as opposed to the BASIC model.)
+They include mostly updated and available models (I can actually use it, as opposed to the BASIC model.) Could be better
+to use incpetion, or efficientnet or something...
 
 """
 

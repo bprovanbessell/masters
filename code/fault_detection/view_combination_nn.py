@@ -22,7 +22,9 @@ from tqdm import tqdm
 
 from custom_dataset import ViewCombDataset
 from trainer import train_multiview_epoch
-from eval import evaluate_multiview
+from eval import evaluate_multiview, ModelSaver
+from logger import MetricLogger
+import os
 
 class ViewCombNetwork(nn.Module):
     def __init__(self, n_views=12):
@@ -174,7 +176,6 @@ def main():
     validation_split = 0.1
     test_split = 0.2
     shuffle_dataset = True
-    random_seed= 42
     epochs = 10
     seed = 44
 
@@ -234,6 +235,13 @@ def main():
     # Maybe change to Adam?
     optimizer = optim.Adam(model.parameters())
     criterion = nn.BCELoss()
+
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/', category + "_multiview_model.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_multiview_log.json")
+
+    model_saver = ModelSaver(model_save_path)
+
+    metric_logger = MetricLogger(metric_save_path)
 
     # scheduler = StepLR(optimizer, step_size=1)
     for epoch in tqdm(range(1, epochs + 1)):

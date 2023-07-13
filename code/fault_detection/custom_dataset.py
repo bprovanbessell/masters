@@ -54,12 +54,12 @@ class MissingPartDataset(Dataset):
     
 
 class MissingPartDataset2Binary(Dataset):
-    def __init__(self, img_dir, transforms):
-        self.img_dir = img_dir
-
+    def __init__(self, img_dir_base, category, transforms):
+        
         self.transforms = transforms
 
-        self.imgs_paths = glob.glob(img_dir + '/*/*.png')
+        img_dir = os.path.join(img_dir_base, category, '*/' '*.png')
+        self.imgs_paths = glob.glob(img_dir)
 
     def __getitem__(self, idx):
         img_path = self.imgs_paths[idx]
