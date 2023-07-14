@@ -80,7 +80,7 @@ class MissingPartDatasetBalancedBinary(Dataset):
             neg_samples_index = self.rng.choice(len(self.groups[1]), size=len(self.groups[0]), replace=False)
             neg_samples = [self.groups[1][ind] for ind in neg_samples_index]
 
-        self.imgs_paths = self.groups[0] + neg_samples
+            self.imgs_paths = self.groups[0] + neg_samples
 
     def __getitem__(self, idx):
         img_path = self.imgs_paths[idx]
@@ -101,6 +101,7 @@ class MissingPartDatasetBalancedBinary(Dataset):
     
     def __len__(self):
         return len(self.imgs_paths)
+
 
 class MissingPartDatasetMultiClass(Dataset):
     def __init__(self, img_dir, transforms):
@@ -600,7 +601,144 @@ class ViewCombDataset(Dataset):
     def __len__(self):
         return len(self.test_pairs)
         
-    
+
+class ViewCombDifferenceDataset(Dataset):
+    # For Difference Learning
+    # So positive pairs are for objects in the same format
+    # So we need to split the dataset per class
+
+
+    def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, train_split=0.7, seed:int=42):
+        self.img_dir = img_dir
+
+        self.transforms = transforms
+        self.n_views = n_views
+        self.n_samples = n_samples
+        self.train = train
+
+        base_dir_instance = os.path.join(img_dir, category, "*")
+        self.instance_dirs = glob.glob(base_dir_instance)
+
+        self.rng = np.random.default_rng(seed)
+
+        # Do this once at the start so they don't change
+        self.test_pairs, self.test_targets = self.generate_pairs()
+        self.pairs, self.targets = self.generate_pairs()
+        self.reset_counter = 0
+        self.reset_num = int(len(self.test_pairs)*train_split)
+
+    def generate_pairs(self):
+        # We need the reference views
+        # We should have 24 images, so we take the 12 spaced at 30 degrees, so should be at indexes[0,2,4,6,8,10,12,14,16,18,20,22]
+        # eg orig_*Index*
+
+        # for each object, seperate it out into its classes
+        pairs = []
+        targets = []
+        for index in range(len(self.instance_dirs)):
+
+            instance_dir = self.instance_dirs[index]
+            # first seperate the images into their respective classes
+
+            class_mapper = {"orig": 0}
+            class_counter = 1
+
+            classes_dict = {"orig": []}
+
+            for img_path in glob.glob(os.path.join(instance_dir, "*.png")):
+
+                label_str_base = img_path.split('/')[-1].split('_')[0]
+                label_str_part_num = img_path.split('/')[-1].split('_')[1]
+
+                if label_str_base == "orig":
+                    classes_dict[label_str_base].append(img_path)
+
+                else:
+                    base_obj_str = label_str_base + label_str_part_num
+
+                    if base_obj_str not in class_mapper:
+                        class_mapper[base_obj_str] = class_counter
+                        class_counter += 1
+                        classes_dict[base_obj_str] = []
+
+                    classes_dict[base_obj_str].append(img_path)
+
+            
+            # now iterate through each of the classes. For each of them, we create the 3D object representation, and the negative and positive query images
+            for class_name, item in classes_dict.items():
+                reference_views = []
+                # Create the groups
+                groups = {0:[],
+                          1:[]}
+
+                # create the reference views for this class
+                for img_path in item:
+                    view_num = int(img_path.split('/')[-1].split('_')[-1][0:-4])
+
+                    if view_num % 2 == 0:
+                        # Reference view
+                        reference_views.append(img_path)
+                    else:
+                        # Otherwise it is just a random positive view
+                        groups[0].append(img_path)
+
+                # All possible negative views (groups of 1) can be any other classes
+                for class_name_2, items_2 in classes_dict.items():
+                    if class_name_2 != class_name:
+                        groups[1].extend(items_2)
+
+                # Now generate the negative and positive pairs as before
+                pos_sample = self.rng.choice(len(groups[0]), size=self.n_samples, replace=False)
+                neg_sample = self.rng.choice(len(groups[1]), size=self.n_samples, replace=False)
+
+                # Pair for each sample
+                for pos_index in pos_sample:
+
+                    pairs.append((reference_views, groups[0][pos_index]))
+                    # Add a positive label(they are the same), there should be no distance between tehm
+                    target = torch.tensor(0, dtype=torch.float)
+                    targets.append(target)
+                
+                for neg_index in neg_sample:
+
+                    pairs.append((reference_views, groups[1][neg_index]))
+                    # Add a positive label(they are the same), there should be no distance between tehm
+                    target = torch.tensor(1, dtype=torch.float)
+                    targets.append(target)
+
+        print(pairs[0], targets[0])
+        print(pairs[13], targets[13])
+
+        print(len(pairs), len(targets))
+        return pairs, targets
+
+    def __getitem__(self, index):
+
+        if self.reset_counter == self.reset_num:
+            self.reset_counter = 0
+            print("RESET")
+            
+            if self.train:
+                self.pairs, self.targets = self.generate_pairs()
+            else:
+                self.pairs, self.targets = self.test_pairs, self.test_targets
+
+        view_img_paths, img_path_2 = self.pairs[index]
+        
+        view_imgs = [Image.open(view_img_path).convert("RGB") for view_img_path in view_img_paths]
+        img_2 = Image.open(img_path_2).convert("RGB")
+
+        if self.transforms is not None:
+            view_imgs_2 = torch.stack([self.transforms(img) for img in view_imgs])
+            img_2 = self.transforms(img_2)
+
+        self.reset_counter += 1
+        return (view_imgs_2, img_2), self.targets[index]
+
+    def __len__(self):
+        return len(self.test_pairs)
+
+  
 class TripletDatasetCatsDogs(Dataset):
 
     def __init__(self, img_dir, transforms):
