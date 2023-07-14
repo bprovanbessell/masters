@@ -29,6 +29,10 @@ def train_multiview_epoch(model, device, train_loader, val_loader, optimizer, cr
         view_images, query_image, targets = view_images.to(device), query_image.to(device), targets.to(device)
         optimizer.zero_grad()
         outputs = model(view_images, query_image).squeeze()
+
+        if outputs.shape == torch.Size([]):
+            outputs = outputs.view(-1)
+
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
@@ -85,7 +89,7 @@ def train_binary_baseline_epoch(model, device, train_loader, val_loader, optimiz
     print(train_acc)
     print('Train Epoch: {} \nLoss: {:.6f} \tAccuracy: {:.4f}%'.format(epoch, loss.item(), 100 * train_acc.item()))
     
-    val_acc, val_loss = evaluate_binary(model, device, val_loader, criterion, set="Validation")  
+    val_acc, val_loss, _, _, _ = evaluate_binary(model, device, val_loader, criterion, set="Validation")  
 
     model_saver.save_model(model, val_acc, epoch, optimizer)
     metric_logger.add_epoch_metrics(train_acc, loss.item(), val_acc, val_loss)

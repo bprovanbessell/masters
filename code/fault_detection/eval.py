@@ -59,7 +59,7 @@ def evaluate_binary(model, device, dataloader, criterion, set="Test"):
         print("Class 0 accuracy: {:.4f}, Class 1 accuracy: {:.4f}".format(class0_acc.item(), class1_acc.item()))
         print("Confusion matrix: ", confusion_matrix)
 
-        return total_acc.item(), test_loss
+        return total_acc.item(), test_loss, precision.item(), class0_acc.item(), class1_acc.item()
     
 
 def evaluate_multiclass(num_classes: int, dataloader, model, device, set="Test"):
