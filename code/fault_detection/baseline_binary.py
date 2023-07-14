@@ -14,10 +14,10 @@ from eval import evaluate_binary, ModelSaver
 from trainer import train_binary_baseline_epoch
 from logger import MetricLogger
 
-from custom_dataset import MissingPartDataset2Binary
+from custom_dataset import MissingPartDatasetBinary, MissingPartDatasetBalancedBinary
 from torch.utils.data.sampler import SubsetRandomSampler
 
-def main():
+def train_category(category:str):
 
     batch_size = 32
     validation_split = 0.2
@@ -37,9 +37,8 @@ def main():
 
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
-    category = 'KitchenPot'
 
-    ds = MissingPartDataset2Binary(img_dir_base=missing_parts_base_dir, category=category, transforms=preprocess)
+    ds = MissingPartDatasetBalancedBinary(img_dir_base=missing_parts_base_dir, category=category, transforms=preprocess, seed=seed)
 
     dataset_size = len(ds)
     rng = np.random.default_rng(seed)
@@ -96,4 +95,12 @@ def main():
     evaluate_binary(model, device, test_dataloader, criterion, set="Test")
 
 if __name__ == "__main__":
-    main()
+
+    categories = ['KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
+                  'Lighter', 'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
+                  'Luggage', 'Window', 'Faucet', 'Eyeglasses', 'Kettle', 'Toilet', 
+                  'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
+                  'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
+
+    category = 'USB'
+    train_category(category)

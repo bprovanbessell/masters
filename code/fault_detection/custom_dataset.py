@@ -14,46 +14,8 @@ from torchvision.models import resnet50, ResNet50_Weights
 from torch import nn
 import random
 
-weights = ResNet50_Weights.IMAGENET1K_V2
-preprocess = weights.transforms()
 
-# Map the metadata to actual labels
-label_dict = {}
-label_dict['true'] = 0
-label_dict['part1'] = 1
-label_dict['part2'] = 1
-
-class MissingPartDataset(Dataset):
-    def __init__(self, img_dir, transforms):
-        self.img_dir = img_dir
-
-        self.transforms = transforms
-
-        self.imgs_paths = glob.glob(img_dir + '/*/*.png')
-
-    def __getitem__(self, idx):
-        img_path = self.imgs_paths[idx]
-        img = Image.open(img_path).convert("RGB")
-
-        if self.transforms is not None:
-            img = self.transforms(img)
-
-        label_str = img_path.split('/')[-2].split('_')[-1]
-
-        # for now just binary classification
-        if label_str == 'true':
-            label = 0
-        else:
-            label = 1
-
-        label = torch.tensor(label, dtype=torch.float32)
-        return img, label
-    
-    def __len__(self):
-        return len(self.imgs_paths)
-    
-
-class MissingPartDataset2Binary(Dataset):
+class MissingPartDatasetBinary(Dataset):
     def __init__(self, img_dir_base, category, transforms):
         
         self.transforms = transforms
@@ -84,6 +46,61 @@ class MissingPartDataset2Binary(Dataset):
     def __len__(self):
         return len(self.imgs_paths)
     
+
+class MissingPartDatasetBalancedBinary(Dataset):
+
+    def __init__(self, img_dir_base, category, transforms, seed=42):
+        self.img_dir = img_dir_base
+
+        self.transforms = transforms
+        self.rng = np.random.default_rng(seed)
+
+        img_dir = os.path.join(img_dir_base, category, '*/' '*.png')
+        self.imgs_paths = glob.glob(img_dir)
+        # get the labels of the images paths, this is needed for the selection stage
+        self.groups = {0:[],
+                       1:[]}
+
+        # We just have positive and negative images
+        for img_path in self.imgs_paths:
+            label_str_base = img_path.split('/')[-1].split('_')[0]
+            # later this will be important for multi-class class splitting, the id of the removed part. E.g. leg 0, leg 1 ...
+            label_str_part_num = img_path.split('/')[-1].split('_')[1]
+
+            # for now just binary classification, we only care about seperating the correct from the faulty classes
+            if label_str_base == 'orig':
+                # label = torch.zeros((1), dtype=torch.float32)
+                self.groups[0].append(img_path)
+            else:
+                self.groups[1].append(img_path)
+
+        # We want the same number of faulty samples as non faulty samples
+        # faulty samples will be the same length (no problem) or greater length
+        if len(self.groups[1]) > len(self.groups[0]):
+            neg_samples_index = self.rng.choice(len(self.groups[1]), size=len(self.groups[0]), replace=False)
+            neg_samples = [self.groups[1][ind] for ind in neg_samples_index]
+
+        self.imgs_paths = self.groups[0] + neg_samples
+
+    def __getitem__(self, idx):
+        img_path = self.imgs_paths[idx]
+        img = Image.open(img_path).convert("RGB")
+
+        if self.transforms is not None:
+            img = self.transforms(img)
+
+        label_str_base = img_path.split('/')[-1].split('_')[0]
+        # for now just binary classification
+        if label_str_base == 'orig':
+            label = 0
+        else:
+            label = 1
+
+        label = torch.tensor(label, dtype=torch.float32)
+        return img, label
+    
+    def __len__(self):
+        return len(self.imgs_paths)
 
 class MissingPartDatasetMultiClass(Dataset):
     def __init__(self, img_dir, transforms):
@@ -149,27 +166,6 @@ class CatsDogsDataset(Dataset):
     
     def __len__(self):
         return len(self.imgs_paths)
-
-# # transforms
-# # 
-# # # Can just use the transforms provided, probably will work better
-# # Other augentation techniques??
-# trainTansform = transforms.Compose([
-# transforms.CenterCrop(1080),
-# transforms.Resize(input_size),
-# # transforms.RandomResizedCrop(config.IMAGE_SIZE),
-# # transforms.RandomHorizontalFlip(),
-# transforms.ToTensor(),
-# preprocess,
-# # transforms.Normalize(mean=config.MEAN, std=config.STD)
-# ])
-# valTransform = transforms.Compose([
-# transforms.CenterCrop(1080),
-# transforms.Resize(input_size),
-# transforms.ToTensor(),
-# # transforms.Normalize(mean=config.MEAN, std=config.STD)
-# ])
-
 
     
 class SiameseDatasetCatsDogs(Dataset):
@@ -274,7 +270,6 @@ class SiameseDatasetCatsDogs(Dataset):
     def __len__(self):
         return len(self.imgs_paths)
     
-
 
 class SiameseDatasetSingleCategory(Dataset):
 
@@ -776,6 +771,9 @@ class TripletDatasetMissingParts(Dataset):
     
 
 if __name__ == "__main__":
+
+    weights = ResNet50_Weights.IMAGENET1K_V2
+    preprocess = weights.transforms()
     # verify the dataset
     data_dir = '/Users/bprovan/Desktop/glasses_basic/'
 
