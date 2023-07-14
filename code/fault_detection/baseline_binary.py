@@ -102,5 +102,10 @@ if __name__ == "__main__":
                   'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
                   'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
 
-    category = 'USB'
-    train_category(category)
+    # category = 'USB'
+    # train_category(category)
+
+    for category in categories:
+        print(category)
+        train_category(category)
+        print("FINISHED: ", category, "\n")
