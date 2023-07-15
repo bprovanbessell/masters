@@ -156,7 +156,7 @@ def load_test_model(category):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.fc.parameters())
 
-    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/', category + "_binary_model.pt")
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/baseline_binary/', category + "_binary_model.pt")
     metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_binary_log.json")
 
     model_saver = ModelSaver(model_save_path)
@@ -184,8 +184,9 @@ if __name__ == "__main__":
     for category in categories:
         print(category)
         # train_category(category)
-        all_res_dict.update(res_dict)
+        
         res_dict = load_test_model(category)
+        all_res_dict.update(res_dict)
         print("FINISHED: ", category, "\n")
 
         with open('logs/baseline_binary.json', 'w') as fp:
