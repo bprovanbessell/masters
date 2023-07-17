@@ -9,26 +9,23 @@
 # In addition, we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
 # based on https://github.com/pytorch/examples/blob/main/siamese_network/main.py
 
-import argparse, random, copy
 import numpy as np
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import torchvision
-from torch.utils.data import Dataset
-from torchvision import datasets
-from torchvision import transforms as T
 from torch.optim.lr_scheduler import StepLR
-import glob
 from tqdm import tqdm
+
+import os
 
 from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from PIL import Image
 from custom_dataset import SiameseDatasetSingleCategory, SiameseDatasetCatsDogs, SiameseDatasetPerObject
+from trainer import train_siamese_epoch, ModelSaver
+from logger import MetricLogger
 
 
 class SiameseNetwork(nn.Module):
@@ -144,7 +141,7 @@ def test(model, device, test_loader, test_loader_len, set='Test'):
         100. * correct / test_loader_len))
     
 
-def main():
+def train_category(category:str):
 
     batch_size = 64
     validation_split = 0.1
@@ -168,9 +165,7 @@ def main():
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
-    # category = "KitchenPot"
-    category = "EyeGlasses"
-
+    
     ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=True, train_split=0.7, seed=seed)
     test_ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
     # a fixed dataset for validation and testing 
@@ -187,8 +182,6 @@ def main():
     if shuffle_dataset:
         rng.shuffle(indices)
     train_indices, val_indices, test_indices =indices[:val_split_index], indices[val_split_index:test_split_index], indices[test_split_index:]
-
-    reset_index = train_indices[0]
 
     print("lengths")
     print(len(train_indices), len(val_indices), len(test_indices))
@@ -209,16 +202,45 @@ def main():
     model = SiameseNetwork().to(device)
     # Maybe change to Adam?
     optimizer = optim.Adadelta(model.parameters())
+    criterion = nn.BCELoss()
+
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/comparison/', category + "_siamese_model.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_siamese_log.json")
+
+    model_saver = ModelSaver(model_save_path)
+    metric_logger = MetricLogger(metric_save_path)
 
     scheduler = StepLR(optimizer, step_size=1)
     for epoch in tqdm(range(1, epochs + 1)):
-        train(model, device, train_dataloader, optimizer, epoch)
-        test(model, device, train_dataloader, test_loader_len=len(train_indices), set='Train')
-        test(model, device, val_dataloader, test_loader_len=len(val_indices), set='Validation')
+        train_siamese_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, model_saver, metric_logger)
         scheduler.step()
 
     test(model, device, test_dataloader, test_loader_len=len(test_indices), set='Test')
 
 if __name__ == "__main__":
-    main()
+
+
+    categories = [
+                # 'KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
+                #   'Lighter', 
+                  
+                  'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
+                  'Luggage', 'Window', 'Faucet', 'Eyeglasses', 'Kettle', 'Toilet', 
+                  'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
+                  'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
+
+    # category = 'USB'
+    # train_category(category)
+    all_res_dict = {}
+
+    for category in categories:
+        print(category)
+        train_category(category)
+        
+        # res_dict = load_test_model(category)
+        # all_res_dict.update(res_dict)
+        print("FINISHED: ", category, "\n")
+
+        # with open('logs/baseline_binary.json', 'w') as fp:
+        #     json.dump(all_res_dict, fp)
 
