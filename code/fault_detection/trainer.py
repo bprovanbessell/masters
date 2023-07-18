@@ -79,6 +79,9 @@ def train_multiview_epoch(model, device, train_loader, val_loader, optimizer, cr
         loss.backward()
         optimizer.step()
 
+        if batch_idx % 20 == 0:
+            print(loss.item())
+
         pred = torch.where(outputs > 0.5, 1, 0)
         correct += pred.eq(targets.view_as(pred)).sum().item()
         acc = acc_metric(pred, targets)
