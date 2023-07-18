@@ -1,6 +1,7 @@
 """
 Log metrics during training, dafault is train acc, train loss, val acc, val loss
 """
+import json
 
 class MetricLogger():
     def __init__(self, save_path) -> None:
@@ -8,10 +9,13 @@ class MetricLogger():
                         'train_loss': [],
                         'val_acc': [],
                         'val_loss': [],}
+        self.save_path = save_path
 
     def save_metrics(self):
         # serialise to json and save
-        pass
+        print(self.metrics)
+        with open(self.save_path, "w") as write_file:
+            json.dump(self.metrics, write_file)
 
     def load(self):
         pass
