@@ -108,7 +108,6 @@ def train_test_category(category:str, train_model=True, load_model=False):
     # weights = ResNet18_Weights.DEFAULT
     preprocess = weights.transforms()
 
-
     device = "mps" if torch.backends.mps.is_available() \
     else "gpu" if torch.cuda.is_available() else "cpu"
 
