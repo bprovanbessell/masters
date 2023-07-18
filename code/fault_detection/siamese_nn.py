@@ -92,52 +92,6 @@ class SiameseNetwork(nn.Module):
         output = self.sigmoid(output)
         
         return output
-
-def train(model, device, train_loader, optimizer, epoch):
-    model.train()
-
-    # we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
-    criterion = nn.BCELoss()
-
-    for batch_idx, ((images_1, images_2), targets) in enumerate(train_loader):
-        images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
-        optimizer.zero_grad()
-        outputs = model(images_1, images_2).squeeze()
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-        if batch_idx % 50 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(images_1), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
-            # if args.dry_run:
-            #     break
-
-def test(model, device, test_loader, test_loader_len, set='Test'):
-    model.eval()
-    test_loss = 0
-    correct = 0
-
-    # we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
-    criterion = nn.BCELoss()
-
-    with torch.no_grad():
-        for ((images_1, images_2), targets) in test_loader:
-            images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
-            outputs = model(images_1, images_2).squeeze()
-            test_loss += criterion(outputs, targets).sum().item()  # sum up batch loss
-            pred = torch.where(outputs > 0.5, 1, 0)  # get the index of the max log-probability
-            # print("pred", pred)
-            # print("targets", targets)
-            correct += pred.eq(targets.view_as(pred)).sum().item()
-
-    test_loss /= test_loader_len
-
-    # With cats and dogs, can achieve 95% accuracy in the first epoch.
-    # But for some reason, does not work with the Kitchen Pot category.
-    print('\n{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        set, test_loss, correct, test_loader_len,
-        100. * correct / test_loader_len))
     
 
 def train_test_category(category:str, train_model=True, load_model=False):
