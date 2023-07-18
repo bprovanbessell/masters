@@ -190,7 +190,7 @@ def evaluate_multiview(model, device, test_loader, criterion, set:str="Test"):
     print("Class 0 Accuracy: ", class0_acc.item(), ", Class 1 Accuracy: ", class1_acc.item())
     print("Confusion matrix: ", confusion_matrix)
 
-    return total_acc.item(), test_loss
+    return total_acc.item(), test_loss, precision.item(), class0_acc.item(), class1_acc.item()
 
 
 class ModelSaver():

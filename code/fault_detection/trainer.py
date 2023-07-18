@@ -92,10 +92,10 @@ def train_multiview_epoch(model, device, train_loader, val_loader, optimizer, cr
     acc_metric.reset()
     print('Train Epoch: {} \nLoss: {:.6f} \tAccuracy: {:.4f}%'.format(epoch, loss.item(), 100 * train_acc.item()))
     
-    val_acc, val_loss = evaluate_multiview(model, device, val_loader, criterion, set="Validation")  
+    val_acc, val_loss, _, _, _ = evaluate_multiview(model, device, val_loader, criterion, set="Validation")  
 
     model_saver.save_model(model, val_acc, epoch, optimizer)
-    metric_logger.add_epoch_metrics(train_acc, loss.item(), val_acc, val_loss)    
+    metric_logger.add_epoch_metrics(train_acc.item(), loss.item(), val_acc, val_loss)    
 
 
 def train_siamese_epoch(model, device, train_loader, val_loader, optimizer, criterion, epoch, 
