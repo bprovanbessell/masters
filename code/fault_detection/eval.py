@@ -123,6 +123,8 @@ def evaluate_siamese(model, device, test_loader, criterion, set='Test'):
         for ((images_1, images_2), targets) in test_loader:
             images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
             outputs = model(images_1, images_2).squeeze()
+            if outputs.shape == torch.Size([]):
+                outputs = outputs.view(-1)
             test_loss += criterion(outputs, targets).sum().item()  # sum up batch loss
             pred = torch.where(outputs > 0.5, 1, 0)  # get the index of the max log-probability
             # print("pred", pred)

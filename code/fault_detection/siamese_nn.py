@@ -10,22 +10,21 @@
 # based on https://github.com/pytorch/examples/blob/main/siamese_network/main.py
 
 import numpy as np
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from tqdm import tqdm
-
-import os
-
 from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from torch.utils.data.sampler import SubsetRandomSampler
+from tqdm import tqdm
+import json
+import os
 
 from custom_dataset import SiameseDatasetSingleCategory, SiameseDatasetCatsDogs, SiameseDatasetPerObject
 from trainer import train_siamese_epoch, ModelSaver
 from logger import MetricLogger
+from eval import evaluate_siamese
 
 
 class SiameseNetwork(nn.Module):
@@ -141,7 +140,7 @@ def test(model, device, test_loader, test_loader_len, set='Test'):
         100. * correct / test_loader_len))
     
 
-def train_category(category:str):
+def train_test_category(category:str, train_model=True, load_model=False):
 
     batch_size = 64
     validation_split = 0.1
@@ -211,36 +210,39 @@ def train_category(category:str):
     metric_logger = MetricLogger(metric_save_path)
 
     scheduler = StepLR(optimizer, step_size=1)
-    for epoch in tqdm(range(1, epochs + 1)):
-        train_siamese_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, model_saver, metric_logger)
-        scheduler.step()
 
-    test(model, device, test_dataloader, test_loader_len=len(test_indices), set='Test')
+    if load_model:
+        model = model_saver.load_model(model, optimizer)
+
+    if train_model:
+        for epoch in tqdm(range(1, epochs + 1)):
+            train_siamese_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, model_saver, metric_logger)
+            scheduler.step()
+
+    total_acc, test_loss, precision, class0_acc, class1_acc = evaluate_siamese(model, device, test_dataloader, criterion, set="Test")
+
+    return {category: (total_acc, test_loss, precision, class0_acc, class1_acc)}
+
+    # test(model, device, test_dataloader, test_loader_len=len(test_indices), set='Test')
 
 if __name__ == "__main__":
 
-
-    categories = [
-                # 'KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
-                #   'Lighter', 
-                  
-                  'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
+    categories = ['KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
+                  'Lighter', 'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
                   'Luggage', 'Window', 'Faucet', 'Eyeglasses', 'Kettle', 'Toilet', 
                   'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
                   'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
-
-    # category = 'USB'
-    # train_category(category)
     all_res_dict = {}
 
     for category in categories:
         print(category)
-        train_category(category)
+        # Train a model from scratch
+        # train_test_category(category, train_model=True, load_model=False)
         
-        # res_dict = load_test_model(category)
-        # all_res_dict.update(res_dict)
+        res_dict = train_test_category(category, train_model=False, load_model=True)
+        all_res_dict.update(res_dict)
         print("FINISHED: ", category, "\n")
 
-        # with open('logs/baseline_binary.json', 'w') as fp:
-        #     json.dump(all_res_dict, fp)
+        with open('logs/siamese_res.json', 'w') as fp:
+            json.dump(all_res_dict, fp)
 

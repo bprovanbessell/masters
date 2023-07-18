@@ -108,6 +108,10 @@ def train_siamese_epoch(model, device, train_loader, val_loader, optimizer, crit
         images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
         optimizer.zero_grad()
         outputs = model(images_1, images_2).squeeze()
+
+        if outputs.shape == torch.Size([]):
+            outputs = outputs.view(-1)
+
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()

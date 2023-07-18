@@ -453,6 +453,9 @@ class SiameseDatasetPerObject(Dataset):
                 else:
                     groups[1].append(img_path)
 
+            # Sometimes there were no valid parts t remove, skip
+            if len(groups[1]) == 0:
+                continue
             # For each positive img in the sample:
             pos_sample = self.rng.choice(len(groups[0]), size=self.n, replace=False)
             for pos_anchor_index in pos_sample:
@@ -737,6 +740,10 @@ class ViewCombDifferenceDataset(Dataset):
 
     def __len__(self):
         return len(self.test_pairs)
+
+
+# class ViewCombUnseenModleDataset(ViewCombDataset):
+    # Should be the same as before, only that the instances are taken from the json split file
 
   
 class TripletDatasetCatsDogs(Dataset):
