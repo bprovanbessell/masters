@@ -111,7 +111,8 @@ if __name__ == "__main__":
 
     for category in categories:
         print(category)
-        # train_category(category)
+        # Train a model from scratch
+        # train_test_category(category, train_model=True, load_model=False)
         
         res_dict = train_test_category(category, train_model=False, load_model=True)
         all_res_dict.update(res_dict)

@@ -453,7 +453,7 @@ class SiameseDatasetPerObject(Dataset):
                 else:
                     groups[1].append(img_path)
 
-            # Sometimes there were no valid parts t remove, skip
+            # Sometimes there were no valid parts to remove, skip
             if len(groups[1]) == 0:
                 continue
             # For each positive img in the sample:

@@ -1,15 +1,6 @@
 import torch
 import torchmetrics
 
-def preds_y_list(dataloader, model, device):
-    preds = []
-    labels = []
-
-    for (x, y) in dataloader:
-        (x, y) = (x.to(device), y.to(device).reshape(-1, 1))
-        pred = model(x)
-
-
 def evaluate_binary(model, device, dataloader, criterion, set="Test"):
 
     # set up metrics
@@ -28,14 +19,11 @@ def evaluate_binary(model, device, dataloader, criterion, set="Test"):
         for (x, y) in dataloader:
             (x, y) = (x.to(device), y.to(device).reshape(-1, 1))
             pred = model(x)
-            # totalValLoss += criterion(pred, y)
-            # calculate the number of correct predictions
             # threshold of 0.5
             test_loss += criterion(pred, y).sum().item()
             pred_class = torch.sigmoid(pred).round()
             preds_sigmoid = torch.sigmoid(pred)
             acc = acc_metric(preds_sigmoid, y)
-            # acc_sample = acc_sample_metric(preds_sigmoid, pred_class)
             prec = prec_metric(preds_sigmoid, y)
             conf = confmat(preds_sigmoid, y)
             correct += (pred_class == y).type(torch.float).sum().item()
@@ -46,7 +34,6 @@ def evaluate_binary(model, device, dataloader, criterion, set="Test"):
         precision = prec_metric.compute()
         confusion_matrix = confmat.compute()
         test_loss /= total_items
-        # total_acc_sample = acc_sample_metric.compute()
         print(set, " set:")
         print('Average loss: {:.4f}, Correct: {}/{}'.format(test_loss, correct, total_items))
 
