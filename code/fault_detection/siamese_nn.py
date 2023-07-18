@@ -196,6 +196,6 @@ if __name__ == "__main__":
         all_res_dict.update(res_dict)
         print("FINISHED: ", category, "\n")
 
-        with open('logs/siamese_res.json', 'w') as fp:
+        with open('logs/results/siamese_res.json', 'w') as fp:
             json.dump(all_res_dict, fp)
 
