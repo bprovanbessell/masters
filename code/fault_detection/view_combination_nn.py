@@ -54,6 +54,7 @@ class ViewCombNetwork(nn.Module):
         self.view_comb = nn.Sequential(
             nn.Linear(self.fc_in_features * self.n_views, 1024),
             nn.ReLU(inplace=True),
+            nn.BatchNorm1d(1024, affine=False),
             nn.Linear(1024, self.fc_in_features),
         )
 
@@ -188,7 +189,6 @@ def train_test_category(category:str, train_model=True, load_model=False):
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
 
-    category = "KitchenPot"
     ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=True, seed=seed)
     test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
@@ -237,10 +237,23 @@ def train_test_category(category:str, train_model=True, load_model=False):
     model_saver = ModelSaver(model_save_path)
     metric_logger = MetricLogger(metric_save_path)
 
-    for epoch in tqdm(range(1, epochs + 1)):
-        train_multiview_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, model_saver, metric_logger)
+    if load_model:
+        model = model_saver.load_model(model, optimizer)
 
-    evaluate_multiview(model, device, test_dataloader, criterion, set="Test")
+    if train_model:
+        for epoch in tqdm(range(1, epochs + 1)):
+            train_multiview_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, 
+                                  model_saver, metric_logger)
+            
+        metric_logger.save_metrics()
+
+    total_acc, test_loss, precision, class0_acc, class1_acc = evaluate_multiview(model, device, test_dataloader, criterion, set="Test")
+
+    return {category: {"accuracy": total_acc,
+                       "avg loss" : test_loss,
+                       "precision": precision,
+                       "class0_acc": class0_acc,
+                       "class1_acc": class1_acc}}
     
 
 def main():
