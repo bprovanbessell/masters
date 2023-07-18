@@ -349,7 +349,20 @@ if __name__ == "__main__":
                 'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
                 'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
     
-    category = "KitchenPot"
+    category = "USB"
     
-    train_test_category(category, train_model=True, load_model=False)
+    all_res_dict = {}
+
+    for category in categories:
+        print(category)
+        # Train a model from scratch
+        train_test_category(category, train_model=True, load_model=False)
+        
+        # res_dict = train_test_category(category, train_model=False, load_model=True)
+        # all_res_dict.update(res_dict)
+        print("FINISHED: ", category, "\n")
+
+        # with open('logs/baseline_binary.json', 'w') as fp:
+        #     json.dump(all_res_dict, fp)
+
     

@@ -13,7 +13,6 @@ class MetricLogger():
 
     def save_metrics(self):
         # serialise to json and save
-        print(self.metrics)
         with open(self.save_path, "w") as write_file:
             json.dump(self.metrics, write_file)
 
