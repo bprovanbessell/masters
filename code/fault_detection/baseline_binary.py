@@ -78,7 +78,7 @@ def train_test_category(category:str, train_model=True, load_model=False):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.fc.parameters())
 
-    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/', category + "_binary_model.pt")
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/baseline_binary/', category + "_binary_model.pt")
     metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_binary_log.json")
 
     model_saver = ModelSaver(model_save_path)
@@ -94,7 +94,11 @@ def train_test_category(category:str, train_model=True, load_model=False):
 
     total_acc, test_loss, precision, class0_acc, class1_acc = evaluate_binary(model, device, test_dataloader, criterion, set="Test")
 
-    return {category: (total_acc, test_loss, precision, class0_acc, class1_acc)}
+    return {category: {"accuracy": total_acc,
+                       "avg loss" : test_loss,
+                       "precision": precision,
+                       "class0_acc": class0_acc,
+                       "class1_acc": class1_acc}}
 
 
 if __name__ == "__main__":

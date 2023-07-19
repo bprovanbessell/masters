@@ -6,7 +6,7 @@ def evaluate_binary(model, device, dataloader, criterion, set="Test"):
     # set up metrics
     acc_metric = torchmetrics.Accuracy(task='binary').to(device)
     # acc_sample_metric = torchmetrics.Accuracy(task='binary', multidim_average='samplewise').to(device)
-    prec_metric = torchmetrics.Precision(task='binary', average='none').to(device)
+    prec_metric = torchmetrics.Precision(task='binary', average='micro').to(device)
     confmat = torchmetrics.ConfusionMatrix(task="binary", num_classes=2).to(device)
     test_loss = 0
     total_items = 0
@@ -98,7 +98,7 @@ def evaluate_siamese(model, device, test_loader, criterion, set='Test'):
     
     acc_metric = torchmetrics.Accuracy(task='binary').to(device)
     # acc_sample_metric = torchmetrics.Accuracy(task='binary', multidim_average='samplewise').to(device)
-    prec_metric = torchmetrics.Precision(task='binary', average='none').to(device)
+    prec_metric = torchmetrics.Precision(task='binary', average='micro').to(device)
     confmat = torchmetrics.ConfusionMatrix(task="binary", num_classes=2).to(device)
     test_loss = 0
     total_items = 0
@@ -150,7 +150,7 @@ def evaluate_multiview(model, device, test_loader, criterion, set:str="Test"):
     # set up metrics
     acc_metric = torchmetrics.Accuracy(task='binary').to(device)
     # acc_sample_metric = torchmetrics.Accuracy(task='binary', multidim_average='samplewise').to(device)
-    prec_metric = torchmetrics.Precision(task='binary', average='none').to(device)
+    prec_metric = torchmetrics.Precision(task='binary', average='micro').to(device)
     confmat = torchmetrics.ConfusionMatrix(task="binary", num_classes=2).to(device)
 
     with torch.no_grad():
@@ -160,6 +160,8 @@ def evaluate_multiview(model, device, test_loader, criterion, set:str="Test"):
             view_images = view_images.view(-1,C,H,W).to(device)
             view_images, query_images, targets = view_images.to(device), query_images.to(device), targets.to(device)
             outputs = model(view_images, query_images).squeeze()
+            if outputs.shape == torch.Size([]):
+                outputs = outputs.view(-1)
             test_loss += criterion(outputs, targets).sum().item()  # sum up batch loss
             pred = torch.where(outputs > 0.5, 1, 0)  # get the index of the max log-probability
 
