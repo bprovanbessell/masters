@@ -21,6 +21,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from tqdm import tqdm
 
 from custom_dataset import ViewCombDataset, ViewCombDifferenceDataset
+from unseen_model_anomoly_dataset import ViewCombUnseenModelDataset
 from trainer import train_multiview_epoch
 from eval import evaluate_multiview, ModelSaver
 from logger import MetricLogger
@@ -254,6 +255,70 @@ def train_test_category(category:str, train_model=True, load_model=False):
                        "precision": precision,
                        "class0_acc": class0_acc,
                        "class1_acc": class1_acc}}
+
+
+def train_test_unseen_category(category:str, train_model=True, load_model=False):
+    batch_size = 8
+    validation_split = 0.1
+    test_split = 0.2
+    shuffle_dataset = True
+    epochs = 10
+    seed = 44
+
+    # weights = ResNet50_Weights.IMAGENET1K_V2
+    weights = ResNet18_Weights.DEFAULT
+    preprocess = weights.transforms()
+
+    device = "mps" if torch.backends.mps.is_available() \
+    else "gpu" if torch.cuda.is_available() else "cpu"
+
+    print(device)
+    missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
+    missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
+    
+    ds = ViewCombUnseenModelDataset(img_dir=missing_parts_base_dir_v1, category=category, 
+                                    n_views=12, n_samples=12, transforms=preprocess, data_split='train', train_split=1, seed=seed)
+    val_ds = ViewCombUnseenModelDataset(img_dir=missing_parts_base_dir_v1, category=category, 
+                                    n_views=12, n_samples=12, transforms=preprocess, data_split='val', train_split=1, seed=seed)
+    test_ds = ViewCombUnseenModelDataset(img_dir=missing_parts_base_dir_v1, category=category, 
+                                    n_views=12, n_samples=12, transforms=preprocess, data_split='test', train_split=1, seed=seed)
+
+    train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size)
+    val_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size)
+    test_dataloader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size)
+    
+    print(len(train_dataloader))
+    print(len(val_dataloader))
+
+    model = ViewCombNetwork().to(device)
+
+    # Would a scheduler be benificial here?
+    optimizer = optim.Adam(model.parameters())
+    criterion = nn.BCELoss()
+
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_unseen/', category + "_multiview_model.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_unseen/', category + "_multiview_log.json")
+
+    model_saver = ModelSaver(model_save_path)
+    metric_logger = MetricLogger(metric_save_path)
+
+    if load_model:
+        model = model_saver.load_model(model, optimizer)
+
+    if train_model:
+        for epoch in tqdm(range(1, epochs + 1)):
+            train_multiview_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, 
+                                  model_saver, metric_logger)
+            
+        metric_logger.save_metrics()
+
+    total_acc, test_loss, precision, class0_acc, class1_acc = evaluate_multiview(model, device, test_dataloader, criterion, set="Test")
+
+    return {category: {"accuracy": total_acc,
+                       "avg loss" : test_loss,
+                       "precision": precision,
+                       "class0_acc": class0_acc,
+                       "class1_acc": class1_acc}}
     
 
 def main():
@@ -343,13 +408,17 @@ def main():
 if __name__ == "__main__":
     # main()
 
-    categories = ['KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
+    categories = [
+        # 'KitchenPot', 'USB', 'Cart', 'Box',
+                   'Pliers', 'WashingMachine', 
                 'Lighter', 'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
                 'Luggage', 'Window', 'Faucet', 'Eyeglasses', 'Kettle', 'Toilet', 
                 'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
                 'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
     
-    category = "USB"
+    category = "KitchenPot"
+
+    # train_test_unseen_category(category)
     
     all_res_dict = {}
 
