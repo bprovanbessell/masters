@@ -39,7 +39,10 @@ def train_test_category(category:str, train_model=True, load_model=False):
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
 
-    ds = MissingPartDatasetBalancedBinary(img_dir_base=missing_parts_base_dir, category=category, transforms=preprocess, seed=seed)
+    ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images', category=category, transforms=preprocess, seed=seed)
+    test_ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images/test', category=category, transforms=preprocess, seed=seed)
+    val_ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images/validation', category=category, transforms=preprocess, seed=seed)
+
 
     dataset_size = len(ds)
     rng = np.random.default_rng(seed)
@@ -64,11 +67,13 @@ def train_test_category(category:str, train_model=True, load_model=False):
 
     # Should work for the basic train test split
     train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size, 
-                                    sampler=train_sampler)
-    val_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
-                                        sampler=val_sampler)
-    test_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
-                                        sampler=test_sampler)
+                                    sampler=None)
+    val_dataloader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size,
+                                        sampler=None)
+    test_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
+                                        sampler=None)
+    
+    print(len(train_dataloader), len(val_dataloader), len(test_dataloader))
     
     num_classes = 1
 
@@ -78,8 +83,8 @@ def train_test_category(category:str, train_model=True, load_model=False):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.fc.parameters())
 
-    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/baseline_binary/', category + "_binary_model.pt")
-    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_binary_log.json")
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/baseline_binary/', category + "_binary_model2.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_binary_log2.json")
 
     model_saver = ModelSaver(model_save_path)
     metric_logger = MetricLogger(metric_save_path)
@@ -111,16 +116,18 @@ if __name__ == "__main__":
 
     # category = 'USB'
     # train_category(category)
+    train_test_category(category='KitchenPot', train_model=True, load_model=False)
+
     all_res_dict = {}
 
-    for category in categories:
-        print(category)
-        # Train a model from scratch
-        # train_test_category(category, train_model=True, load_model=False)
+    # for category in categories:
+    #     print(category)
+    #     # Train a model from scratch
+    #     # train_test_category(category, train_model=True, load_model=False)
         
-        res_dict = train_test_category(category, train_model=False, load_model=True)
-        all_res_dict.update(res_dict)
-        print("FINISHED: ", category, "\n")
+    #     res_dict = train_test_category(category, train_model=False, load_model=True)
+    #     all_res_dict.update(res_dict)
+    #     print("FINISHED: ", category, "\n")
 
-        with open('logs/baseline_binary.json', 'w') as fp:
-            json.dump(all_res_dict, fp)
+    #     with open('logs/baseline_binary.json', 'w') as fp:
+    #         json.dump(all_res_dict, fp)

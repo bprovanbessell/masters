@@ -21,6 +21,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from tqdm import tqdm
 
 from custom_dataset import ViewCombDataset, ViewCombDifferenceDataset
+from custom_dataset_v2 import ViewCombDatasetv2
 from unseen_model_anomoly_dataset import ViewCombUnseenModelDataset
 from trainer import train_multiview_epoch
 from eval import evaluate_multiview, ModelSaver
@@ -191,7 +192,7 @@ def train_test_category(category:str, train_model=True, load_model=False):
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
 
     ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
-                         n_views=12, n_samples=12, transforms=preprocess, train=True, seed=seed)
+                         n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
     test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
 
@@ -234,6 +235,92 @@ def train_test_category(category:str, train_model=True, load_model=False):
 
     model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_comparison/', category + "_multiview_model.pt")
     metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_comparison/', category + "_multiview_log.json")
+
+    model_saver = ModelSaver(model_save_path)
+    metric_logger = MetricLogger(metric_save_path)
+
+    if load_model:
+        model = model_saver.load_model(model, optimizer)
+
+    if train_model:
+        for epoch in tqdm(range(1, epochs + 1)):
+            train_multiview_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, 
+                                  model_saver, metric_logger)
+            
+        metric_logger.save_metrics()
+
+    total_acc, test_loss, precision, class0_acc, class1_acc = evaluate_multiview(model, device, test_dataloader, criterion, set="Test")
+
+    return {category: {"accuracy": total_acc,
+                       "avg loss" : test_loss,
+                       "precision": precision,
+                       "class0_acc": class0_acc,
+                       "class1_acc": class1_acc}}
+
+
+def train_test_difference_category(category:str, train_model=True, load_model=False):
+    batch_size = 8
+    validation_split = 0.1
+    test_split = 0.2
+    shuffle_dataset = True
+    epochs = 10
+    seed = 44
+
+    # weights = ResNet50_Weights.IMAGENET1K_V2
+    weights = ResNet18_Weights.DEFAULT
+    preprocess = weights.transforms()
+
+    device = "mps" if torch.backends.mps.is_available() \
+    else "gpu" if torch.cuda.is_available() else "cpu"
+
+    print(device)
+    missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
+    missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
+
+    ds = ViewCombDifferenceDataset(img_dir=missing_parts_base_dir_v1, category=category, 
+                         n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
+    test_ds = ViewCombDifferenceDataset(img_dir=missing_parts_base_dir_v1, category=category, 
+                         n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
+
+    # Creating data indices for training and validation splits:
+    rng = np.random.default_rng(seed)
+    dataset_size = len(ds)
+    indices = list(range(dataset_size))
+    val_split_index = int(np.floor(dataset_size * (1-(validation_split + test_split))))
+    test_split_index = int(np.floor(dataset_size * (1 - (test_split))))
+
+    print(val_split_index)
+    print(test_split_index)
+    if shuffle_dataset:
+        rng.shuffle(indices)
+    train_indices, val_indices, test_indices = indices[:val_split_index], indices[val_split_index:test_split_index], indices[test_split_index:]
+
+    print("lengths")
+    print(len(train_indices), len(val_indices), len(test_indices))
+
+    # Creating PT data samplers and loaders:
+    train_sampler = SubsetRandomSampler(train_indices)
+    val_sampler = SubsetRandomSampler(val_indices)
+    test_sampler = SubsetRandomSampler(test_indices)
+
+    # Should work for the basic train test split
+    train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size, 
+                                    sampler=train_sampler, drop_last=True)
+    val_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+                                        sampler=val_sampler)
+    test_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+                                        sampler=test_sampler)
+    
+    print(len(train_dataloader))
+    print(len(val_dataloader))
+
+    model = ViewCombNetwork().to(device)
+    # Maybe change to Adam?
+    optimizer = optim.Adam(model.parameters())
+    criterion = nn.BCELoss()
+
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_difference/', category + "_multiview_model.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_difference/', category + "_multiview_log.json")
 
     model_saver = ModelSaver(model_save_path)
     metric_logger = MetricLogger(metric_save_path)
@@ -320,6 +407,67 @@ def train_test_unseen_category(category:str, train_model=True, load_model=False)
                        "class0_acc": class0_acc,
                        "class1_acc": class1_acc}}
     
+
+    
+def train_test_category_v2(category:str, train_model=True, load_model=False):
+    batch_size = 8
+    epochs = 10
+    seed = 44
+
+    # weights = ResNet50_Weights.IMAGENET1K_V2
+    weights = ResNet18_Weights.DEFAULT
+    preprocess = weights.transforms()
+
+    device = "mps" if torch.backends.mps.is_available() \
+    else "gpu" if torch.cuda.is_available() else "cpu"
+
+    print(device)
+    missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
+    missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
+    missing_parts_base_dir_v2 = '/Users/bprovan/University/dissertation/datasets/images_ds_v2'
+    
+    ds = ViewCombDatasetv2(missing_parts_base_dir_v2, category, transforms=preprocess, split='train', seed=seed)
+    val_ds = ViewCombDatasetv2(missing_parts_base_dir_v2, category, transforms=preprocess, split='validation', seed=seed)
+    test_ds = ViewCombDatasetv2(missing_parts_base_dir_v2, category, transforms=preprocess, split='test', seed=seed)
+
+    # Should work for the basic train test split
+    train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size)
+    val_dataloader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size)
+    test_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size)
+    
+    print(len(train_dataloader))
+    print(len(val_dataloader))
+
+    model = ViewCombNetwork().to(device)
+    # Maybe change to Adam?
+    optimizer = optim.Adam(model.parameters())
+    criterion = nn.BCELoss()
+
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_comparison/', category + "_multiview_model_2.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_comparison/', category + "_multiview_log_2.json")
+
+    model_saver = ModelSaver(model_save_path)
+    metric_logger = MetricLogger(metric_save_path)
+
+    if load_model:
+        model = model_saver.load_model(model, optimizer)
+
+    if train_model:
+        for epoch in tqdm(range(1, epochs + 1)):
+            train_multiview_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, 
+                                  model_saver, metric_logger)
+            
+        metric_logger.save_metrics()
+
+    total_acc, test_loss, precision, class0_acc, class1_acc = evaluate_multiview(model, device, test_dataloader, criterion, set="Test")
+
+    return {category: {"accuracy": total_acc,
+                       "avg loss" : test_loss,
+                       "precision": precision,
+                       "class0_acc": class0_acc,
+                       "class1_acc": class1_acc}}
+
+
 
 def main():
 
@@ -419,17 +567,21 @@ if __name__ == "__main__":
     category = "KitchenPot"
 
     # train_test_unseen_category(category)
+    # train_test_difference_category(category)
+    # train_test_category(category)
+    train_test_category_v2(category)
+
     
     all_res_dict = {}
 
-    for category in categories:
-        print(category)
+    # for category in categories:
+    #     print(category)
         # Train a model from scratch
-        train_test_category(category, train_model=True, load_model=False)
+        # train_test_category(category, train_model=True, load_model=False)
         
         # res_dict = train_test_category(category, train_model=False, load_model=True)
         # all_res_dict.update(res_dict)
-        print("FINISHED: ", category, "\n")
+        # print("FINISHED: ", category, "\n")
 
         # with open('logs/baseline_binary.json', 'w') as fp:
         #     json.dump(all_res_dict, fp)

@@ -479,16 +479,10 @@ class SiameseDatasetPerObject(Dataset):
 
                 target = torch.tensor(1, dtype=torch.float)
                 targets.append(target)
-
-            # Could do here where we generate for randomly 
             
         return pairs, targets
 
     def __len__(self):
-        # number of pairs, for each instance we have the number of samples, times 2 (positive and negative)
-        # * self.n * 2
-        # But we only want the indexes per 
-        # return len(self.instance_dirs) * self.n * 2
         return len(self.test_pairs)
     
 
@@ -506,6 +500,11 @@ class ViewCombDataset(Dataset):
 
     # Our anchor (view combination) will always be the same, and then we compare many positive images, and negative images to that.
 
+    # In terms of index, anchor views will always be the same. However we need to make sure that the query images remain distinct
+
+    # Generate pairs, can get test and validation ones: How to ensure we can still do random sampling
+    # Do I have to make the check that it is not the same as the test sample?
+
 
     def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, train_split=0.7, seed:int=42):
         self.img_dir = img_dir
@@ -519,6 +518,8 @@ class ViewCombDataset(Dataset):
         self.instance_dirs = glob.glob(base_dir_instance)
 
         self.rng = np.random.default_rng(seed)
+
+
 
         # Do this once at the start so they don't change
         self.test_pairs, self.test_targets = self.generate_pairs()
@@ -542,6 +543,7 @@ class ViewCombDataset(Dataset):
                     1:[]}
 
             for img_path in glob.glob(os.path.join(instance_dir, "*.png")):
+                # remake this list so it doesn't containt the test or val query images
 
                 label_str_base = img_path.split('/')[-1].split('_')[0]
                 # later this will be important for multi-class class splitting, the id of the removed part. E.g. leg 0, leg 1 ...
@@ -558,6 +560,8 @@ class ViewCombDataset(Dataset):
                     groups[1].append(img_path)
 
             # Now get positive and negative samples
+            if len(groups[1]) == 0:
+                continue
             pos_sample = self.rng.choice(len(groups[0]), size=self.n_samples, replace=False)
             neg_sample = self.rng.choice(len(groups[1]), size=self.n_samples, replace=False)
 
