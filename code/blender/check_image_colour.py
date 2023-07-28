@@ -121,9 +121,9 @@ def make_occ_json2():
 
 def move_occluded_images():
 
-    images_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v0"
-    json_file = "/Users/bprovan/University/dissertation/masters/code/occlusion2.json"
-    occluded_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v0_occluded"
+    images_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v1"
+    json_file = "/Users/bprovan/University/dissertation/masters/code/occlusion.json"
+    occluded_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v1_occluded"
 
 
     with open(json_file, "r") as f:
