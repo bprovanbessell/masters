@@ -506,7 +506,7 @@ class ViewCombDataset(Dataset):
     # Do I have to make the check that it is not the same as the test sample?
 
 
-    def __init__(self, img_dir: str, category: str, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, train_split=0.7, seed:int=42):
+    def __init__(self, img_dir: str, category, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, train_split=0.7, seed:int=42):
         self.img_dir = img_dir
 
         self.transforms = transforms
@@ -514,11 +514,18 @@ class ViewCombDataset(Dataset):
         self.n_samples = n_samples
         self.train = train
 
-        base_dir_instance = os.path.join(img_dir, category, "*")
-        self.instance_dirs = glob.glob(base_dir_instance)
+        if isinstance(category, list):
+            instance_dirs = []
+
+            for c in category:
+                base_dir_instance = os.path.join(img_dir, c, "*")
+                instance_dirs.extend(glob.glob(base_dir_instance))
+            self.instance_dirs = instance_dirs
+        else:
+            base_dir_instance = os.path.join(img_dir, category, "*")
+            self.instance_dirs = glob.glob(base_dir_instance)
 
         self.rng = np.random.default_rng(seed)
-
 
 
         # Do this once at the start so they don't change
