@@ -2,3 +2,6 @@ data
 __pycache__/
 .DS_Store
 models
+logs/
+occlusion.json
+occlusion2.json
