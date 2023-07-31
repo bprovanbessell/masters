@@ -28,6 +28,9 @@ import bpy
 bpy.context.space_data.context = 'VIEW_LAYER'
 bpy.context.scene.view_layers["ViewLayer"].use_pass_object_index = True
 
+bpy.context.scene.use_nodes = True
+
+
 D.objects[1].pass_index = 1
 
 # for white background bpy.context.scene.render.film_transparent = True

@@ -20,32 +20,15 @@ TODO:
 """
 
 
-# DATASET_PATH = r"E:\UOE\Dissertation\dataset\SAPIEN"
+
 DATASET_PATH = "/Users/bprovan/University/dissertation/datasets/partnet-mobility"
-# SAVE_PATH = r"E:\UOE\Dissertation\dataset\MyDataset"  # path to save pics
-SAVE_PATH = "/Users/bprovan/University/dissertation/datasets/images_ds_v0"
+ # path to save pics
+SAVE_PATH = "/Users/bprovan/University/dissertation/datasets/images_mask"
 # path to save this scripts and used json files
-# WORKSPACE_PATH = r"E:\UOE\Dissertation\Workspace\SAPIEN"
+
 WORKSPACE_PATH = "/Users/bprovan/University/dissertation/mpd-master/SAPIEN"
 
 ERROR_FILE_PATH = "Users/bprovan/University/dissertation/mpd-master/SAPIEN"
-
-
-# SAVE_PATH = r"E:\UOE\Dissertation\dataset\MyDataset"  # path to save pics
-# path to save this scripts and used json files
-# WORKSPACE_PATH = r"E:\UOE\Dissertation\mpd\SAPIEN"
-
-
-# parse model ids of one category. Change CATEGORY to render the pics of all
-# the objs of the category
-# MODEL_IDS = []
-# CURR_CATEGORY = "FoldingChair"
-# MODEL_ID_JSON = "SAPIEN_model_ids.json"
-# json_file = os.path.join(WORKSPACE_PATH, MODEL_ID_JSON)
-# with open(json_file, "r") as f:
-#     data: dict = json.load(f)
-#     for key in data.setdefault(CURR_CATEGORY, []):
-#         MODEL_IDS.append(key)
 
 MODEL_CHILDREN_JSON = "SAPIEN_ALL_CHILDREN.json"
 MODEL_ID_JSON = "SAPIEN_model_ids.json"
@@ -67,10 +50,16 @@ with open(json_file, "r") as f:
     REMOVEABLES: dict = json.load(f)
 
 
+def set_render_resolution(res_x, res_y):
+    r = bpy.context.scene.render
+    r.resolution_x = res_x
+    r.resolution_y = res_y
+
+
 VIEW_RADIUS = 5.0  # view radius of the camera
 
 
-def load_model(path_to_model: str) -> None:
+def load_model(path_to_model: str):
     """Load model in blender
 
     Args:
@@ -78,10 +67,15 @@ def load_model(path_to_model: str) -> None:
     """
     path_to_objs = os.path.join(path_to_model, "textured_objs", "*.obj")
     obj_files = glob.glob(path_to_objs)
+
+    all_object_ids = []
     for obj_file in obj_files:
         bpy.ops.import_scene.obj(filepath=obj_file)
         obj_name = os.path.split(os.path.splitext(obj_file)[0])[-1]
         bpy.context.selected_objects[0].name = obj_name
+        all_object_ids.append(obj_name)
+
+    return all_object_ids
 
 
 def clear_scene() -> None:
@@ -148,7 +142,7 @@ def generate_camera_points(num_points: int, angle_deg: float = 30):
 
 
 def take_panorama(
-    model_id: str, category: str, prefix: str, num_images: int = 12, angle_deg: float = 30
+    model_id: str, category: str, prefix: str, num_images: int = 24, angle_deg: float = 30
 ) -> None:
     """Take panorama photos of target obj. These photographs will be taken evenly
        from a circular path at a specific angle from the horizontal plane of the object.
@@ -179,7 +173,7 @@ def take_panorama(
         bpy.ops.render.render(write_still=True)
 
 
-def recur_remove_render(model_id: str, category: str, part_data: dict, removables: list) -> None:
+def recur_remove_render(model_id: str, category: str, part_data: dict, removables: list,  occlusion_mask: bool = False) -> None:
     """recursively remove parts of the target model
 
     Args:
@@ -211,7 +205,13 @@ def recur_remove_render(model_id: str, category: str, part_data: dict, removable
         # Hide all parts for rendering
         for part_id in part_ids:
             if part_id in bpy.data.objects:
-                bpy.data.objects[part_id].hide_render = True
+                if occlusion_mask:
+                    # set anomalous to 1, all the rest to 0
+                    
+                    bpy.data.objects[part_id].pass_index = 1
+                else:
+                    # otherwise hide the part. Will this fix it??
+                    bpy.data.objects[part_id].hide_render = True
 
         # Take panorama
         take_panorama(model_id, category, f"{part_data['text']}_{part_data['id']}")
@@ -221,21 +221,29 @@ def recur_remove_render(model_id: str, category: str, part_data: dict, removable
             if part_id in bpy.data.objects:
                 bpy.data.objects[part_id].hide_render = False
 
+                if occlusion_mask:
+                    # set anomalous to 1, all the rest to 0
+                    bpy.data.objects[part_id].pass_index = 0
+
     # Continue recursion for children
     if "children" in part_data:
         for child in part_data["children"]:
             recur_remove_render(model_id, category, child, removables)
 
 
-def render(model_id: str, category: str) -> None:
+def render(model_id: str, category: str, occlusion_mask: bool = False) -> None:
     """render one model. Take photos of complete model and model with missing parts
 
     Args:
         model_id (str): target model id
     """
     model_path = os.path.join(DATASET_PATH, model_id)
-    load_model(model_path)
+    all_obj_ids = load_model(model_path)
     # Get panorama of original obj
+    # set all part object ids to 0
+    for obj_id in all_obj_ids:
+        bpy.data.objects[obj_id].pass_index = 0
+
     take_panorama(model_id, category, "orig")
     part_data: dict = {}
     json_path = os.path.join(model_path, "result.json")
@@ -246,13 +254,37 @@ def render(model_id: str, category: str) -> None:
     removables = REMOVEABLES.setdefault(category, [])
     if len(removables) == 0:
         return
-    recur_remove_render(model_id, category, part_data, removables)
+    recur_remove_render(model_id, category, part_data, removables,  occlusion_mask)
+
+
+def set_render_background():
+    bpy.context.space_data.shader_type = 'WORLD'
+    bpy.data.worlds["World"].node_tree.nodes["Background"].use_custom_color = True
+    bpy.data.worlds["World"].node_tree.nodes["Background"].color = (1, 1, 1)
 
 
 def main():
+    set_render_resolution(128, 128)
+
     start_time = time.time()
 
-    CATEGORIES = ['KitchenPot', 'Switch', "Eyeglasses"]
+    # CATEGORIES = ['KitchenPot', 'Switch', "Eyeglasses"]
+    to_remove = ['Remote', 'Clock', 'CoffeeMachine', 'Suitcase', 'Printer', 'Refrigerator', 
+                 'FoldingChair', 'Knife', 'Fan', 'Dispenser', 'Camera', 'Safe', 'Mouse',
+                 'Pen', 'Toaster', 'Keyboard', 'Bottle', 'Display', 'Microwave', 'Mug', 'Door Set']
+    # questionable - toilet, phone, Dishwasher, Lamp, Sitting Furniture (should remove both leg and wheels), Storage Furniture,
+    CATEGORIES = ['Remote', 'KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'Suitcase', 
+     'Printer', 'WashingMachine', 'Lighter', 'Refrigerator', 'Switch', 
+     'Laptop', 'Bucket', 'FoldingChair', 'Globe', 'Trashcan', 'Luggage', 
+     'Window', 'Knife', 'Faucet', 'Fan', 'Eyeglasses', 'Kettle', 'Toilet', 
+     'Dispenser', 'Camera', 'Safe', 'Mouse', 'Pen', 'Oven', 'CoffeeMachine', 
+     'Stapler', 'Phone', 'Toaster', 'Trash Can', 'Scissors', 'Dish Washer', 
+     'Keyboard', 'Lamp', 'Sitting Furniture', 'Table', 'Bottle', 'Display', 
+     'Storage Furniture', 'Pot', 'Clock', 'Microwave', 'Mug', 'Door Set']
+    
+    CATEGORIES = [x for x in CATEGORIES if x not in to_remove]
+
+    occlusion_mask = False
 
     for category in CATEGORIES:
         model_ids = []
@@ -268,7 +300,7 @@ def main():
         for id in model_ids:
             try:
                 clear_scene()
-                render(id, category)
+                render(id, category, occlusion_mask)
             except Exception as e:
                 error_message = f"An error occurred with model id {id}: {str(e)}"
                 print(error_message)  # output to console
