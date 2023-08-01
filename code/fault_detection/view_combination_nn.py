@@ -27,9 +27,10 @@ from trainer import train_multiview_epoch
 from eval import evaluate_multiview, ModelSaver
 from logger import MetricLogger
 import os
+import json
 
 class ViewCombNetwork(nn.Module):
-    def __init__(self, n_views=12):
+    def __init__(self, n_views=12, pretrained=True):
         super(ViewCombNetwork, self).__init__()
 
         self.n_views = n_views
@@ -40,7 +41,11 @@ class ViewCombNetwork(nn.Module):
         # weights = ResNet50_Weights.IMAGENET1K_V2
         weights = ResNet18_Weights.DEFAULT
         preprocess = weights.transforms()
-        self.resnet_model = resnet18(weights=weights)
+
+        if not pretrained:
+            self.resnet_model = resnet18()
+        else:
+            self.resnet_model = resnet18(weights=weights)
         # model = resnet18(weights=ResNet18_Weights.DEFAULT)
 
         # freeze the weights, set them to be non trainable
@@ -190,10 +195,12 @@ def train_test_category(category:str, train_model=True, load_model=False):
     print(device)
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
+    missing_parts_base_dir_v1_occluded = '/Users/bprovan/University/dissertation/datasets/images_ds_v1_occluded'
 
-    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
+
+    ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1_occluded, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
-    test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1, category=category, 
+    test_ds = ViewCombDataset(img_dir=missing_parts_base_dir_v1_occluded, category=category, 
                          n_views=12, n_samples=12, transforms=preprocess, train=False, seed=seed)
 
     # Creating data indices for training and validation splits:
@@ -219,7 +226,7 @@ def train_test_category(category:str, train_model=True, load_model=False):
 
     # Should work for the basic train test split
     train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size, 
-                                    sampler=train_sampler)
+                                    sampler=train_sampler, drop_last=True)
     val_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
                                         sampler=val_sampler)
     test_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
@@ -233,8 +240,8 @@ def train_test_category(category:str, train_model=True, load_model=False):
     optimizer = optim.Adam(model.parameters())
     criterion = nn.BCELoss()
 
-    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_comparison/', category + "_multiview_model.pt")
-    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_comparison/', category + "_multiview_log.json")
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_comparison/', category + "_multiview_model_occ.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_comparison/', category + "_multiview_log_occ.json")
 
     model_saver = ModelSaver(model_save_path)
     metric_logger = MetricLogger(metric_save_path)
@@ -306,9 +313,9 @@ def train_test_difference_category(category:str, train_model=True, load_model=Fa
     # Should work for the basic train test split
     train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size, 
                                     sampler=train_sampler, drop_last=True)
-    val_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+    val_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
                                         sampler=val_sampler)
-    test_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
+    test_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
                                         sampler=test_sampler)
     
     print(len(train_dataloader))
@@ -556,34 +563,32 @@ def main():
 if __name__ == "__main__":
     # main()
 
-    categories = [
-        # 'KitchenPot', 'USB', 'Cart', 'Box',
-                   'Pliers', 'WashingMachine', 
+    categories = ['KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
                 'Lighter', 'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
                 'Luggage', 'Window', 'Faucet', 'Eyeglasses', 'Kettle', 'Toilet', 
                 'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
                 'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
     
-    category = "KitchenPot"
+    # category = "WashingMachine"
 
     # train_test_unseen_category(category)
     # train_test_difference_category(category)
     # train_test_category(category)
-    train_test_category_v2(category)
+    # train_test_category_v2(category)
 
     
     all_res_dict = {}
 
-    # for category in categories:
-    #     print(category)
-        # Train a model from scratch
-        # train_test_category(category, train_model=True, load_model=False)
+    for category in categories:
+        print(category)
+    #     # Train a model from scratch
+        train_test_category(category, train_model=True, load_model=False)
         
-        # res_dict = train_test_category(category, train_model=False, load_model=True)
-        # all_res_dict.update(res_dict)
-        # print("FINISHED: ", category, "\n")
+    #     # res_dict = train_test_category(category, train_model=False, load_model=True)
+    #     # all_res_dict.update(res_dict)
+        print("FINISHED: ", category, "\n")
 
-        # with open('logs/baseline_binary.json', 'w') as fp:
+        # with open('logs/multiview_standard.json', 'w') as fp:
         #     json.dump(all_res_dict, fp)
 
     

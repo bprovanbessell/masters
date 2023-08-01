@@ -76,11 +76,19 @@ class MissingPartDatasetBalancedBinary(Dataset):
 
         # We want the same number of faulty samples as non faulty samples
         # faulty samples will be the same length (no problem) or greater length
-        if len(self.groups[1]) > len(self.groups[0]):
+        # or less with occluded samples removed
+        if len(self.groups[1]) >= len(self.groups[0]):
             neg_samples_index = self.rng.choice(len(self.groups[1]), size=len(self.groups[0]), replace=False)
             neg_samples = [self.groups[1][ind] for ind in neg_samples_index]
 
             self.imgs_paths = self.groups[0] + neg_samples
+
+        # pos has more samples
+        else:
+            pos_samples_index = self.rng.choice(len(self.groups[0]), size=len(self.groups[1]), replace=False)
+            pos_samples = [self.groups[0][ind] for ind in pos_samples_index]
+
+            self.imgs_paths = self.groups[1] + pos_samples
 
     def __getitem__(self, idx):
         img_path = self.imgs_paths[idx]
@@ -456,8 +464,17 @@ class SiameseDatasetPerObject(Dataset):
             # Sometimes there were no valid parts to remove, skip
             if len(groups[1]) == 0:
                 continue
+
+            max_sample_size = min(len(groups[0]), len(groups[1]))
+
+            if max_sample_size >= self.n:
+                sample_size = self.n
+
+            else:
+                sample_size = max_sample_size
+
             # For each positive img in the sample:
-            pos_sample = self.rng.choice(len(groups[0]), size=self.n, replace=False)
+            pos_sample = self.rng.choice(len(groups[0]), size=sample_size, replace=False)
             for pos_anchor_index in pos_sample:
                 # get a random positive pair, that is different
                 pos_index = self.rng.integers(0, len(groups[0]))
@@ -472,8 +489,7 @@ class SiameseDatasetPerObject(Dataset):
 
                 # now get a random negative pair
             for pos_anchor_index in pos_sample:
-                # get a random positive pair, that is different
-                neg_index = self.rng.integers(0, len(groups[0]))
+                neg_index = self.rng.integers(0, len(groups[1]))
 
                 pairs.append((groups[0][pos_anchor_index], groups[1][neg_index]))
 

@@ -114,12 +114,14 @@ def train_test_category(category:str, train_model=True, load_model=False):
     print(device)
     cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
+    missing_parts_base_dir_v1_occluded = '/Users/bprovan/University/dissertation/datasets/images_ds_v0_occluded'
+
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
     
-    ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
-    test_ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
+    ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir_v1_occluded, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
+    test_ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir_v1_occluded, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
     # a fixed dataset for validation and testing 
 
     # Creating data indices for training and validation splits:
@@ -156,8 +158,8 @@ def train_test_category(category:str, train_model=True, load_model=False):
     optimizer = optim.Adadelta(model.parameters())
     criterion = nn.BCELoss()
 
-    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/comparison/', category + "_siamese_model.pt")
-    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_siamese_log.json")
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/comparison/', category + "_siamese_model_occ.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_siamese_log_occ.json")
 
     model_saver = ModelSaver(model_save_path)
     metric_logger = MetricLogger(metric_save_path)
@@ -194,12 +196,12 @@ if __name__ == "__main__":
     for category in categories:
         print(category)
         # Train a model from scratch
-        # train_test_category(category, train_model=True, load_model=False)
+        train_test_category(category, train_model=True, load_model=False)
         
-        res_dict = train_test_category(category, train_model=False, load_model=True)
-        all_res_dict.update(res_dict)
+        # res_dict = train_test_category(category, train_model=False, load_model=True)
+        # all_res_dict.update(res_dict)
         print("FINISHED: ", category, "\n")
 
-        with open('logs/results/siamese_res.json', 'w') as fp:
-            json.dump(all_res_dict, fp)
+        # with open('logs/results/siamese_res.json', 'w') as fp:
+        #     json.dump(all_res_dict, fp)
 
