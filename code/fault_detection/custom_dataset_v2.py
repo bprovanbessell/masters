@@ -25,10 +25,6 @@ class ViewCombDatasetv2(Dataset):
 
     # and then we have the query images -> set out in test, validation, anf the rest
 
-
-
-
-
     def __init__(self, img_dir: str, category: str,  transforms=None, split:str='train', seed:int=42):
         self.img_dir = img_dir
 
@@ -36,12 +32,13 @@ class ViewCombDatasetv2(Dataset):
         self.split = split
 
         if split == "train":
-            base_dir_query_instance = os.path.join(img_dir, 'query_images', category, "*")
+            base_dir_query_instance = os.path.join(img_dir, 'query_images/train', category, "*")
             self.n_samples=9
 
         elif split == 'validation':
             base_dir_query_instance = os.path.join(img_dir, 'query_images/validation', category, "*")
             self.n_samples = 1
+            
         elif split == 'test':
             base_dir_query_instance = os.path.join(img_dir, 'query_images/test', category, "*")
             self.n_samples = 2
@@ -51,7 +48,7 @@ class ViewCombDatasetv2(Dataset):
             base_dir_query_instance = os.path.join(img_dir, category, "*")
 
         self.instance_query_dirs = glob.glob(base_dir_query_instance)
-        base_dir_reference_instance = os.path.join('/Users/bprovan/University/dissertation/datasets/images_ds_v0', category, "*")
+        base_dir_reference_instance = os.path.join('/Users/bprovan/University/dissertation/datasets/images_ds_v0_occluded', category, "*")
         self.instance_reference_dirs = glob.glob(base_dir_reference_instance)
 
         self.rng = np.random.default_rng(seed)
@@ -113,6 +110,7 @@ class ViewCombDatasetv2(Dataset):
 
         if self.split == 'train' and index == 0:
             self.pairs, self.targets = self.generate_pairs()
+            print("gen")
 
         view_img_paths, img_path_2 = self.pairs[index]
         

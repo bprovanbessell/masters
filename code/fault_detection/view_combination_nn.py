@@ -83,6 +83,7 @@ class ViewCombNetwork(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(self.fc_in_features * 2, 256),
             nn.ReLU(inplace=True),
+            nn.BatchNorm1d(256, affine=False),
             nn.Linear(256, 1),
         )
 
@@ -443,7 +444,7 @@ def train_test_category_v2(category:str, train_model=True, load_model=False):
     else "gpu" if torch.cuda.is_available() else "cpu"
 
     print(device)
-    missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
+    missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0_occluded'
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
     missing_parts_base_dir_v2 = '/Users/bprovan/University/dissertation/datasets/images_ds_v2'
     
@@ -583,26 +584,27 @@ if __name__ == "__main__":
                 'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
                 'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
     
-    # category = "WashingMachine"
+    category = "Eyeglasses"
 
     # train_test_unseen_category(category)
     # train_test_difference_category(category)
     # train_test_category(category)
-    # train_test_category_v2(category)
+    train_test_category_v2(category)
+    train_test_category_v2(category, train_model=False, load_model=True)
 
     
-    all_res_dict = {}
+    # all_res_dict = {}
 
-    for category in categories:
-        print(category)
-    #     # Train a model from scratch
-        # train_test_category(category, train_model=True, load_model=False)
+    # for category in categories:
+    #     print(category)
+    # #     # Train a model from scratch
+    #     # train_test_category(category, train_model=True, load_model=False)
         
-        res_dict = train_test_category(category, train_model=False, load_model=True)
-        all_res_dict.update(res_dict)
-        print("FINISHED: ", category, "\n")
+    #     res_dict = train_test_category(category, train_model=False, load_model=True)
+    #     all_res_dict.update(res_dict)
+    #     print("FINISHED: ", category, "\n")
 
-        with open('logs/multiview_standard_occ_finetune.json', 'w') as fp:
-            json.dump(all_res_dict, fp)
+    #     with open('logs/multiview_standard_occ_finetune.json', 'w') as fp:
+    #         json.dump(all_res_dict, fp)
 
     

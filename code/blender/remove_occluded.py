@@ -121,9 +121,9 @@ def make_occ_json2():
 
 def move_occluded_images():
 
-    images_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v1"
+    images_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images/test"
     json_file = "/Users/bprovan/University/dissertation/masters/code/occlusion.json"
-    occluded_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v1_occluded"
+    occluded_folder = "/Users/bprovan/University/dissertation/datasets/images_ds_v2_occluded/query_images/test"
 
 
     with open(json_file, "r") as f:
@@ -144,14 +144,15 @@ def move_occluded_images():
                     im_id = im_path.split('/')[-1]
                     new_im_path = os.path.join(new_dir_path, im_id)
 
-                    shutil.move(im_path, new_im_path)
+                    shutil.copy(im_path, new_im_path)
 
                 for im_id, label in data[category][instance].items():
 
                     if label == 1:
                         im_path = os.path.join(dir_path, im_id)
-                        new_im_path = os.path.join(new_dir_path, im_id)
-                        shutil.move(im_path, new_im_path)
+                        if os.path.exists(im_path):
+                            new_im_path = os.path.join(new_dir_path, im_id)
+                            shutil.copy(im_path, new_im_path)
 
 
 if __name__ == "__main__":

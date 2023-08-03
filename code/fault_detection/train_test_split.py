@@ -214,6 +214,45 @@ def make_img_split(category, seed):
             img_v2 = os.path.join(missing_parts_base_dir_v2, "test", l[-3], l[-2], l[-1])
             shutil.move(test_img_2, img_v2)
 
+def copy_orig_unseen_anomaly(category, split):
+    # copy the originals from dataset v2 query images to the unseen anomaly dataset
+    missing_parts_base_dir_v2 = '/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images/'
+
+    src_path = os.path.join(missing_parts_base_dir_v2, split, category)
+    dst_path = '/Users/bprovan/University/dissertation/datasets/images_ds_v1_occluded_unseen_anomaly2'
+    dst_path = os.path.join(dst_path, split, category)
+    print("HMMMM")
+    print("PATH", src_path)
+
+    try:
+        object_ids = os.listdir(dst_path)
+    except FileNotFoundError:
+        return category
+
+    if len(object_ids) == 0:
+        return category
+    
+    img_dir = os.path.join(src_path, '*/' '*.png')
+    image_files = glob.glob(img_dir)
+
+    for img_file in image_files:
+        # object_id, part_name, part_id = img_file.split("_")[0:3]
+        sole_img_file = img_file.split('/')[-1]
+        # later this will be important for multi-class class splitting, the id of the removed part. E.g. leg 0, leg 1 ...
+        # label_str_part_num = img_path.split('/')[-1].split('_')[1]
+        object_id = img_file.split('/')[-2]
+        part_name, part_id = sole_img_file.split("_")[0:2]
+        # src_file = os.path.join(image_dir, img_file)
+        src_file = img_file
+
+        # eg so if there is a second possible anomaly, eg other arm of chair, other leg of glasses, then this goes to val and test
+        if part_name == "orig":
+            if object_id in object_ids:
+
+                # move it to the appropriate place
+                dst_dir = os.path.join(dst_path, object_id, sole_img_file)
+                shutil.copy(src_file, dst_dir)
+
 
             
 
@@ -233,8 +272,11 @@ if __name__ == "__main__":
                 'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
     
     all_res_dict = {}
+    categories = ["Eyeglasses"]
 
     for category in categories:
+        for split in ["train", "test", "validation"]:
+            copy_orig_unseen_anomaly(category, split)
     #     print(category)
         
     #     res_dict = gen_original_pairs(category)
@@ -242,7 +284,7 @@ if __name__ == "__main__":
 
     #     with open(test_query_imgs_fp, 'w') as fp:
     #         json.dump(all_res_dict, fp)
-        make_img_split(category, 44)
+        # make_img_split(category, 44)
 
 
             

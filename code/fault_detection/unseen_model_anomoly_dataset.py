@@ -254,3 +254,7 @@ class ViewCombUnseenModelDataset(Dataset):
     def __len__(self):
         return len(self.test_pairs)
         
+
+# unseen anomaly categories
+["Bucket", "Cart", "Dish Washer", "Eyeglasses", "Faucet", "Luggage", "Oven",
+ "Scissors", "Sitting Furniture", "Switch", "Table", "Toilet", "Trashcan", "WashingMachine", "Window"]

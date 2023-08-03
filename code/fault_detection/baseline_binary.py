@@ -42,9 +42,9 @@ def train_test_category(category:str, train_model=True, load_model=False):
 
     ds = MissingPartDatasetBalancedBinary(img_dir_base=missing_parts_base_dir_v0_occluded, category=category, transforms=preprocess, seed=seed)
 
-    # ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images', category=category, transforms=preprocess, seed=seed)
-    # test_ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images/test', category=category, transforms=preprocess, seed=seed)
-    # val_ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2/query_images/validation', category=category, transforms=preprocess, seed=seed)
+    ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2_occluded/query_images/train', category=category, transforms=preprocess, seed=seed)
+    test_ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2_occluded/query_images/test', category=category, transforms=preprocess, seed=seed)
+    val_ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2_occluded/query_images/validation', category=category, transforms=preprocess, seed=seed)
 
 
     dataset_size = len(ds)
@@ -70,11 +70,11 @@ def train_test_category(category:str, train_model=True, load_model=False):
 
     # Should work for the basic train test split
     train_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size, 
-                                    sampler=train_sampler)
-    val_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
-                                        sampler=val_sampler)
-    test_dataloader = torch.utils.data.DataLoader(ds, batch_size=batch_size,
-                                        sampler=test_sampler)
+                                    sampler=None)
+    val_dataloader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size,
+                                        sampler=None)
+    test_dataloader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size,
+                                        sampler=None)
     
     print(len(train_dataloader), len(val_dataloader), len(test_dataloader))
     
@@ -86,8 +86,8 @@ def train_test_category(category:str, train_model=True, load_model=False):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.fc.parameters())
 
-    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/baseline_binary/', category + "_binary_model_occ.pt")
-    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_binary_log_occ.json")
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/baseline_binary/', category + "_binary_model_occ_v2.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_binary_log_occ_v2.json")
 
     model_saver = ModelSaver(model_save_path)
     metric_logger = MetricLogger(metric_save_path)
