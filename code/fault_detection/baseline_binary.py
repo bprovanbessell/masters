@@ -126,11 +126,11 @@ if __name__ == "__main__":
     for category in categories:
         print(category)
     #     # Train a model from scratch
-        train_test_category(category, train_model=True, load_model=False)
+        # train_test_category(category, train_model=True, load_model=False)
         
-    #     res_dict = train_test_category(category, train_model=False, load_model=True)
-    #     all_res_dict.update(res_dict)
+        res_dict = train_test_category(category, train_model=False, load_model=True)
+        all_res_dict.update(res_dict)
         print("FINISHED: ", category, "\n")
 
-    #     with open('logs/baseline_binary.json', 'w') as fp:
-    #         json.dump(all_res_dict, fp)
+        with open('logs/baseline_binary_occ.json', 'w') as fp:
+            json.dump(all_res_dict, fp)

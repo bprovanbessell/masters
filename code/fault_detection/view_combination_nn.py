@@ -48,9 +48,23 @@ class ViewCombNetwork(nn.Module):
             self.resnet_model = resnet18(weights=weights)
         # model = resnet18(weights=ResNet18_Weights.DEFAULT)
 
+        model_list = list(self.resnet_model.children())
+        # print(model_list)
+        # print(len(model_list))
+
+        finetune = True
         # freeze the weights, set them to be non trainable
-        for param in self.resnet_model.parameters():
-            param.requires_grad = False
+        # Does this work appropriately
+        if finetune:
+            for layer in model_list[0:-3]: 
+                for param in layer.parameters():
+                        param.requires_grad = False
+            # pass
+            # pretrained_model_except_last_layer = list(pretrained_model.children())[:-1]
+            # we must be somehow able to train just the last 3 layers or something?
+        else:
+            for param in self.resnet_model.parameters():
+                param.requires_grad = False
 
         self.fc_in_features = self.resnet_model.fc.in_features
         
@@ -240,8 +254,8 @@ def train_test_category(category:str, train_model=True, load_model=False):
     optimizer = optim.Adam(model.parameters())
     criterion = nn.BCELoss()
 
-    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_comparison/', category + "_multiview_model_occ.pt")
-    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_comparison/', category + "_multiview_log_occ.json")
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/multiview_comparison/', category + "_multiview_model_occ_finetune.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_comparison/', category + "_multiview_log_occ_finetune.json")
 
     model_saver = ModelSaver(model_save_path)
     metric_logger = MetricLogger(metric_save_path)
@@ -582,13 +596,13 @@ if __name__ == "__main__":
     for category in categories:
         print(category)
     #     # Train a model from scratch
-        train_test_category(category, train_model=True, load_model=False)
+        # train_test_category(category, train_model=True, load_model=False)
         
-    #     # res_dict = train_test_category(category, train_model=False, load_model=True)
-    #     # all_res_dict.update(res_dict)
+        res_dict = train_test_category(category, train_model=False, load_model=True)
+        all_res_dict.update(res_dict)
         print("FINISHED: ", category, "\n")
 
-        # with open('logs/multiview_standard.json', 'w') as fp:
-        #     json.dump(all_res_dict, fp)
+        with open('logs/multiview_standard_occ_finetune.json', 'w') as fp:
+            json.dump(all_res_dict, fp)
 
     

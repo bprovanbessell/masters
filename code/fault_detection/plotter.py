@@ -15,12 +15,17 @@ class Plotter():
 
 
 
-def plot_latex_table_rows(res_json):
+def plot_latex_table_rows(res_json, brev=False):
     accuracies = []
     precisions = []
     with open(res_json, "r") as f:
         data: dict = json.load(f)
         categories = list(data.keys())
+
+        if brev:
+            # hand chosen good and bad categories
+            categories = ['KitchenPot', 'USB', 'Eyeglasses', 'Laptop', 'Globe', 
+                          'Sitting Furniture', 'Table', 'Kettle', 'Storage Furniture', 'WashingMachine']
 
         for category in categories:
             cat_res = data[category]
@@ -31,9 +36,8 @@ def plot_latex_table_rows(res_json):
 
 
 if __name__ == "__main__":
-    res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/baseline_binary.json"
-    res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/siamese_res.json"
-    res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/multiview_standard.json"
+    # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/baseline_binary_occ.json"
+    res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/siamese_res_occ.json"
+    # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/multiview_standard_occ_finetune.json"
 
-
-    plot_latex_table_rows(res_json)
+    plot_latex_table_rows(res_json, brev=False)
