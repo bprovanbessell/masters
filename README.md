@@ -13,7 +13,7 @@
 - torchmetrics
 - pytorch ignite
 
-```conda install pytorch torchvision torchaudio -c pytorch-nightly```
+```conda install pytorch torchvision torchaudio```
 ``` pip install torchmetrics pytorch-ignite```
 
 Install Blender https://www.blender.org/

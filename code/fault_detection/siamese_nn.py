@@ -9,26 +9,22 @@
 # In addition, we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
 # based on https://github.com/pytorch/examples/blob/main/siamese_network/main.py
 
-import argparse, random, copy
 import numpy as np
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import torchvision
-from torch.utils.data import Dataset
-from torchvision import datasets
-from torchvision import transforms as T
 from torch.optim.lr_scheduler import StepLR
-import glob
-from tqdm import tqdm
-
 from torchvision.models import resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from torch.utils.data.sampler import SubsetRandomSampler
+from tqdm import tqdm
+import json
+import os
 
-from PIL import Image
 from custom_dataset import SiameseDatasetSingleCategory, SiameseDatasetCatsDogs, SiameseDatasetPerObject
+from trainer import train_siamese_epoch, ModelSaver
+from logger import MetricLogger
+from eval import evaluate_siamese
 
 
 class SiameseNetwork(nn.Module):
@@ -96,55 +92,9 @@ class SiameseNetwork(nn.Module):
         output = self.sigmoid(output)
         
         return output
-
-def train(model, device, train_loader, optimizer, epoch):
-    model.train()
-
-    # we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
-    criterion = nn.BCELoss()
-
-    for batch_idx, ((images_1, images_2), targets) in enumerate(train_loader):
-        images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
-        optimizer.zero_grad()
-        outputs = model(images_1, images_2).squeeze()
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-        if batch_idx % 50 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(images_1), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
-            # if args.dry_run:
-            #     break
-
-def test(model, device, test_loader, test_loader_len, set='Test'):
-    model.eval()
-    test_loss = 0
-    correct = 0
-
-    # we aren't using `TripletLoss` as the MNIST dataset is simple, so `BCELoss` can do the trick.
-    criterion = nn.BCELoss()
-
-    with torch.no_grad():
-        for ((images_1, images_2), targets) in test_loader:
-            images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
-            outputs = model(images_1, images_2).squeeze()
-            test_loss += criterion(outputs, targets).sum().item()  # sum up batch loss
-            pred = torch.where(outputs > 0.5, 1, 0)  # get the index of the max log-probability
-            # print("pred", pred)
-            # print("targets", targets)
-            correct += pred.eq(targets.view_as(pred)).sum().item()
-
-    test_loss /= test_loader_len
-
-    # With cats and dogs, can achieve 95% accuracy in the first epoch.
-    # But for some reason, does not work with the Kitchen Pot category.
-    print('\n{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        set, test_loss, correct, test_loader_len,
-        100. * correct / test_loader_len))
     
 
-def main():
+def train_test_category(category:str, train_model=True, load_model=False):
 
     batch_size = 64
     validation_split = 0.1
@@ -158,21 +108,20 @@ def main():
     # weights = ResNet18_Weights.DEFAULT
     preprocess = weights.transforms()
 
-
     device = "mps" if torch.backends.mps.is_available() \
     else "gpu" if torch.cuda.is_available() else "cpu"
 
     print(device)
     cats_dogs_data_dir = '/Users/bprovan/University/dissertation/masters/code/data/archive/train'
     missing_parts_base_dir = '/Users/bprovan/University/dissertation/datasets/images_ds_v0'
+    missing_parts_base_dir_v1_occluded = '/Users/bprovan/University/dissertation/datasets/images_ds_v0_occluded'
+
 
     # ds = SiameseDatasetCatsDogs(img_dir=cats_dogs_data_dir, transforms=preprocess)
     # ds = SiameseDatasetSingleCategory(img_dir=missing_parts_base_dir, category="KitchenPot", transforms=preprocess)
-    # category = "KitchenPot"
-    category = "EyeGlasses"
-
-    ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=True, train_split=0.7, seed=seed)
-    test_ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
+    
+    ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir_v1_occluded, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
+    test_ds = SiameseDatasetPerObject(img_dir=missing_parts_base_dir_v1_occluded, category=category, n=8, transforms=preprocess, train=False, train_split=0.7, seed=seed)
     # a fixed dataset for validation and testing 
 
     # Creating data indices for training and validation splits:
@@ -187,8 +136,6 @@ def main():
     if shuffle_dataset:
         rng.shuffle(indices)
     train_indices, val_indices, test_indices =indices[:val_split_index], indices[val_split_index:test_split_index], indices[test_split_index:]
-
-    reset_index = train_indices[0]
 
     print("lengths")
     print(len(train_indices), len(val_indices), len(test_indices))
@@ -209,16 +156,52 @@ def main():
     model = SiameseNetwork().to(device)
     # Maybe change to Adam?
     optimizer = optim.Adadelta(model.parameters())
+    criterion = nn.BCELoss()
+
+    model_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/models/comparison/', category + "_siamese_model_occ.pt")
+    metric_save_path = os.path.join('/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/', category + "_siamese_log_occ.json")
+
+    model_saver = ModelSaver(model_save_path)
+    metric_logger = MetricLogger(metric_save_path)
 
     scheduler = StepLR(optimizer, step_size=1)
-    for epoch in tqdm(range(1, epochs + 1)):
-        train(model, device, train_dataloader, optimizer, epoch)
-        test(model, device, train_dataloader, test_loader_len=len(train_indices), set='Train')
-        test(model, device, val_dataloader, test_loader_len=len(val_indices), set='Validation')
-        scheduler.step()
 
-    test(model, device, test_dataloader, test_loader_len=len(test_indices), set='Test')
+    if load_model:
+        model = model_saver.load_model(model, optimizer)
+
+    if train_model:
+        for epoch in tqdm(range(1, epochs + 1)):
+            train_siamese_epoch(model, device, train_dataloader, val_dataloader, optimizer, criterion, epoch, model_saver, metric_logger)
+            scheduler.step()
+
+    total_acc, test_loss, precision, class0_acc, class1_acc = evaluate_siamese(model, device, test_dataloader, criterion, set="Test")
+
+    return {category: {"accuracy": total_acc,
+                       "avg loss" : test_loss,
+                       "precision": precision,
+                       "class0_acc": class0_acc,
+                       "class1_acc": class1_acc}}
+
+    # test(model, device, test_dataloader, test_loader_len=len(test_indices), set='Test')
 
 if __name__ == "__main__":
-    main()
+
+    categories = ['KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
+                  'Lighter', 'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
+                  'Luggage', 'Window', 'Faucet', 'Eyeglasses', 'Kettle', 'Toilet', 
+                  'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
+                  'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
+    all_res_dict = {}
+
+    for category in categories:
+        print(category)
+        # Train a model from scratch
+        # train_test_category(category, train_model=True, load_model=False)
+        
+        res_dict = train_test_category(category, train_model=False, load_model=True)
+        all_res_dict.update(res_dict)
+        print("FINISHED: ", category, "\n")
+
+        with open('logs/results/siamese_res_occ.json', 'w') as fp:
+            json.dump(all_res_dict, fp)
 
