@@ -26,6 +26,9 @@ def plot_latex_table_rows(res_json, brev=False):
             # hand chosen good and bad categories
             categories = ['KitchenPot', 'USB', 'Eyeglasses', 'Laptop', 'Globe', 
                           'Sitting Furniture', 'Table', 'Kettle', 'Storage Furniture', 'WashingMachine']
+            
+            # categories = ["Cart", "Eyeglasses", "Faucet", "Luggage", "Oven",
+            #         "Scissors", "Sitting Furniture", "Switch", "Table", "Toilet", "Trashcan", "Window"]
 
         for category in categories:
             cat_res = data[category]
@@ -33,11 +36,17 @@ def plot_latex_table_rows(res_json, brev=False):
             accuracies.append(cat_res['accuracy'] * 100)
             precisions.append(cat_res['precision'])
         print("{} & {:.4f}\%  & {:.4f} \\".format("Mean", np.mean(accuracies), np.mean(precisions)))
+        print("{} & {:.4f}\%  & {:.4f} \\".format("Stdev", np.std(accuracies), np.std(precisions)))
 
 
 if __name__ == "__main__":
     # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/baseline_binary_occ.json"
-    res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/siamese_res_occ.json"
-    # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/multiview_standard_occ_finetune.json"
+    # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/siamese_res_occ.json"
+    res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/multiview_standard_occ_finetune.json"
+    # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/results/multiview_standard_occ.json"
+    # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_diff_4.json"
+    # res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_unseen_anomaly_2.json"
+    res_json = "/Users/bprovan/University/dissertation/masters/code/fault_detection/logs/multiview_all_cats.json"
+
 
     plot_latex_table_rows(res_json, brev=False)

@@ -111,11 +111,13 @@ def train_test_category(category:str, train_model=True, load_model=False):
 
 if __name__ == "__main__":
 
-    categories = ['KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
+    categories = [
+    'KitchenPot', 'USB', 'Cart', 'Box', 'Pliers', 'WashingMachine', 
                   'Lighter', 'Switch', 'Laptop', 'Bucket', 'Globe', 'Trashcan', 
                   'Luggage', 'Window', 'Faucet', 'Eyeglasses', 'Kettle', 'Toilet', 
                   'Oven', 'Stapler', 'Phone', 'Trash Can', 'Scissors', 'Dish Washer', 
-                  'Lamp', 'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
+                  'Lamp',
+                    'Sitting Furniture', 'Table', 'Storage Furniture', 'Pot']
 
     # category = 'USB'
     # train_category(category)
@@ -132,5 +134,5 @@ if __name__ == "__main__":
         all_res_dict.update(res_dict)
         print("FINISHED: ", category, "\n")
 
-        with open('logs/baseline_binary_occ.json', 'w') as fp:
+        with open('logs/baseline_binary_occ_v2.json', 'w') as fp:
             json.dump(all_res_dict, fp)

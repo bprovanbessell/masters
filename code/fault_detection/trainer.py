@@ -8,7 +8,7 @@
 import torch
 import torchmetrics
 
-from eval import evaluate_multiview, evaluate_binary, evaluate_siamese, ModelSaver
+from eval import evaluate_multiview, evaluate_binary, evaluate_siamese, ModelSaver, evaluate_multiview_all
 from logger import MetricLogger
 
 
@@ -132,3 +132,49 @@ def train_siamese_epoch(model, device, train_loader, val_loader, optimizer, crit
 
     model_saver.save_model(model, val_acc, epoch, optimizer)
     metric_logger.add_epoch_metrics(train_acc, loss.item(), val_acc, val_loss)
+
+
+
+def train_multiview_epoch_all(model, device, train_loader, val_loader, optimizer, criterion, epoch, 
+                          model_saver:ModelSaver=None, metric_logger:MetricLogger=None):
+    model.train()
+
+    acc_metric = torchmetrics.Accuracy(task='binary').to(device)
+    correct = 0
+    total_train_loss = 0
+
+    for batch_idx, ((view_images, query_image), targets, cats) in enumerate(train_loader):
+        batch_size, n_views, C, H, W = view_images.size()
+        # print(N,V,C,H,W)
+        # flatten it out
+        view_images = view_images.view(-1, C, H, W).to(device)
+
+        view_images, query_image, targets = view_images.to(device), query_image.to(device), targets.to(device)
+        optimizer.zero_grad()
+        outputs = model(view_images, query_image).squeeze()
+
+        if outputs.shape == torch.Size([]):
+            outputs = outputs.view(-1)
+
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+
+        if batch_idx % 20 == 0:
+            print(loss.item())
+
+        pred = torch.where(outputs > 0.5, 1, 0)
+        correct += pred.eq(targets.view_as(pred)).sum().item()
+        acc = acc_metric(pred, targets)
+        total_train_loss += loss.item()
+
+        # if batch_idx % 50 == 0:
+    train_acc = acc_metric.compute()
+    acc_metric.reset()
+    print('Train Epoch: {} \nLoss: {:.6f} \tAccuracy: {:.4f}%'.format(epoch, loss.item(), 100 * train_acc.item()))
+    
+    val_acc, val_loss, _, _, _, _ = evaluate_multiview_all(model, device, val_loader, criterion, set="Validation")  
+
+    model_saver.save_model(model, val_acc, epoch, optimizer)
+    metric_logger.add_epoch_metrics(train_acc.item(), loss.item(), val_acc, val_loss)    
+

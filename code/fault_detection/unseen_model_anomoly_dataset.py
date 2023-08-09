@@ -207,9 +207,20 @@ class ViewCombUnseenModelDataset(Dataset):
                 else:
                     groups[1].append(img_path)
 
+            if len(groups[1]) == 0:
+                continue
+            
+            max_sample_size = min(len(groups[0]), len(groups[1]))
+
+            if max_sample_size >= self.n_samples:
+                sample_size = self.n_samples
+
+            else:
+                sample_size = max_sample_size
+
             # Now get positive and negative samples
-            pos_sample = self.rng.choice(len(groups[0]), size=self.n_samples, replace=False)
-            neg_sample = self.rng.choice(len(groups[1]), size=self.n_samples, replace=False)
+            pos_sample = self.rng.choice(len(groups[0]), size=sample_size, replace=False)
+            neg_sample = self.rng.choice(len(groups[1]), size=sample_size, replace=False)
 
             # Pair for each sample
             for pos_index in pos_sample:

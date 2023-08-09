@@ -693,6 +693,10 @@ class ViewCombDifferenceDataset(Dataset):
                     classes_dict[label_str_base].append(img_path)
 
                 else:
+                    if label_str_base == "rotation":
+                        label_str_base = img_path.split('/')[-1].split('_')[1]
+                        label_str_part_num = img_path.split('/')[-1].split('_')[2]
+
                     base_obj_str = label_str_base + label_str_part_num
 
                     if base_obj_str not in class_mapper:
@@ -724,13 +728,32 @@ class ViewCombDifferenceDataset(Dataset):
                 # All possible negative views (groups of 1) can be any other classes
                 for class_name_2, items_2 in classes_dict.items():
                     if class_name_2 != class_name:
-                        groups[1].extend(items_2)
+                        for img_path in items_2:
+                            view_num = int(img_path.split('/')[-1].split('_')[-1][0:-4])
+
+                            if view_num % 2 == 1:
+                                # Reference view
+                                
+                                groups[1].append(img_path)
+
+                if len(groups[1]) == 0:
+                    continue
+                
+                max_sample_size = min(len(groups[0]), len(groups[1]))
+
+                if max_sample_size >= self.n_samples:
+                    sample_size = self.n_samples
+
+                else:
+                    sample_size = max_sample_size
 
                 # Now generate the negative and positive pairs as before
-                pos_sample = self.rng.choice(len(groups[0]), size=self.n_samples, replace=False)
-                neg_sample = self.rng.choice(len(groups[1]), size=self.n_samples, replace=False)
+                pos_sample = self.rng.choice(len(groups[0]), size=sample_size, replace=False)
+                neg_sample = self.rng.choice(len(groups[1]), size=sample_size, replace=False)
 
-                # Pair for each sample
+                if len(reference_views) == 0:
+                    continue
+                # Pair for each sample  
                 for pos_index in pos_sample:
 
                     pairs.append((reference_views, groups[0][pos_index]))
@@ -780,6 +803,165 @@ class ViewCombDifferenceDataset(Dataset):
 
 # class ViewCombUnseenModleDataset(ViewCombDataset):
     # Should be the same as before, only that the instances are taken from the json split file
+
+
+class ViewCombDatasetAllCats(Dataset):
+    # Try to compare the same objects only?
+    # So for each object, compare it to all the other correct views (combination), and negative views.
+    # A lot of examples actually. 
+    # Keep the training balanced. So for each object, 
+    # We get the 12 reference views -> representation of the 3D object
+
+    # sample n positive views (different from the 12 reference views) as positive pair samples
+
+
+    # sample n negative views -> for negative pair samples.
+
+    # Our anchor (view combination) will always be the same, and then we compare many positive images, and negative images to that.
+
+    # In terms of index, anchor views will always be the same. However we need to make sure that the query images remain distinct
+
+    # Generate pairs, can get test and validation ones: How to ensure we can still do random sampling
+    # Do I have to make the check that it is not the same as the test sample?
+
+
+    def __init__(self, img_dir: str, categories, n_views:int=12, n_samples:int=12,  transforms=None, train:bool=True, train_split=0.7, seed:int=42):
+        self.img_dir = img_dir
+
+        self.transforms = transforms
+        self.n_views = n_views
+        self.n_samples = n_samples
+        self.train = train
+
+        # self.cat_label_dict = {'KitchenPot': 1, 
+        #               'USB': 2,
+        #               'Cart': 3, 
+        #               'Box': 4, 
+        #               'Pliers': 5,
+        #               'WashingMachine': 6, 
+        #               'Lighter': 7, 'Switch': 8, 'Laptop': 9, 'Bucket': 10, 'Globe': 11, 'Trashcan': 12, 
+        #                 'Luggage': 13, 'Window': 14, 'Faucet': 15, 'Eyeglasses': 16, 'Kettle': 17, 'Toilet': 18, 
+        #         'Oven': 19, 'Stapler': 20, 'Phone': 21, 'Trash Can': 22, 'Scissors': 23, 'Dish Washer': 24, 
+        #         'Lamp': 25, 'Sitting Furniture': 26, 'Table': 27, 'Storage Furniture': 28, 'Pot': 29}
+
+        # if isinstance(category, list):
+        instance_dirs = []
+
+        for c in categories:
+            base_dir_instance = os.path.join(img_dir, c, "*")
+            instance_dirs.extend(glob.glob(base_dir_instance))
+        self.instance_dirs = instance_dirs
+    # else:
+        #     base_dir_instance = os.path.join(img_dir, category, "*")
+        #     self.instance_dirs = glob.glob(base_dir_instance)
+
+        self.rng = np.random.default_rng(seed)
+
+
+        # Do this once at the start so they don't change
+        self.test_pairs, self.test_targets, self.test_cat_labels = self.generate_pairs()
+        self.pairs, self.targets, self.cat_labels = self.generate_pairs()
+        self.reset_counter = 0
+        self.reset_num = int(len(self.test_pairs)*train_split)
+
+    def generate_pairs(self):
+        # We need the reference views
+        # We should have 24 images, so we take the 12 spaced at 30 degrees, so should be at indexes[0,2,4,6,8,10,12,14,16,18,20,22]
+        # eg orig_*Index*
+        pairs = []
+        targets = []
+        cat_labels = []
+        for index in range(len(self.instance_dirs)):
+            # get the categorie, and pass that as a label
+            # get the reference views first.
+            # Actually don't we want to parameterise the reference views? For the moment it is fixed at 12
+            reference_views = []
+            instance_dir = self.instance_dirs[index]
+
+            groups = {0:[],
+                    1:[]}
+            
+            cat_label = instance_dir.split('/')[-2]
+            # cat_label = self.cat_label_dict[cat_label_str]
+
+            for img_path in glob.glob(os.path.join(instance_dir, "*.png")):
+                # remake this list so it doesn't containt the test or val query images
+
+                label_str_base = img_path.split('/')[-1].split('_')[0]
+                # later this will be important for multi-class class splitting, the id of the removed part. E.g. leg 0, leg 1 ...
+                label_str_part_num = img_path.split('/')[-1].split('_')[1]
+
+                # for now just binary classification, we only care about seperating the correct from the faulty classes
+                if label_str_base == 'orig':
+                    if int(label_str_part_num[0:-4]) % 2 == 0:
+                        # Reference view
+                        reference_views.append(img_path)
+                    else:
+                        groups[0].append(img_path)
+                else:
+                    groups[1].append(img_path)
+
+            # Now get positive and negative samples
+            if len(groups[1]) == 0:
+                continue
+            
+            max_sample_size = min(len(groups[0]), len(groups[1]))
+
+            if max_sample_size >= self.n_samples:
+                sample_size = self.n_samples
+
+            else:
+                sample_size = max_sample_size
+            
+            pos_sample = self.rng.choice(len(groups[0]), size=sample_size, replace=False)
+            neg_sample = self.rng.choice(len(groups[1]), size=sample_size, replace=False)
+
+            # Pair for each sample
+            for pos_index in pos_sample:
+
+                pairs.append((reference_views, groups[0][pos_index]))
+                # Add a positive label(they are the same), there should be no distance between tehm
+                target = torch.tensor(0, dtype=torch.float)
+                targets.append(target)
+                cat_labels.append(cat_label)
+            
+            for neg_index in neg_sample:
+
+                pairs.append((reference_views, groups[1][neg_index]))
+                # Add a positive label(they are the same), there should be no distance between tehm
+                target = torch.tensor(1, dtype=torch.float)
+                targets.append(target)
+                cat_labels.append(cat_label)
+
+        return pairs, targets, cat_labels
+
+    def __getitem__(self, index):
+
+        if self.reset_counter == self.reset_num:
+            self.reset_counter = 0
+            print("RESET")
+            
+            if self.train:
+                self.pairs, self.targets, self.cat_labels = self.generate_pairs()
+            else:
+                self.pairs, self.targets, self.cat_labels = self.test_pairs, self.test_targets, self.cat_labels
+
+        view_img_paths, img_path_2 = self.pairs[index]
+        
+        view_imgs = [Image.open(view_img_path).convert("RGB") for view_img_path in view_img_paths]
+        img_2 = Image.open(img_path_2).convert("RGB")
+
+        if self.transforms is not None:
+            view_imgs_2 = torch.stack([self.transforms(img) for img in view_imgs])
+            img_2 = self.transforms(img_2)
+
+        self.reset_counter += 1
+        return (view_imgs_2, img_2), self.targets[index], self.cat_labels[index]
+
+    def __len__(self):
+        return len(self.test_pairs)
+        
+
 
   
 class TripletDatasetCatsDogs(Dataset):
