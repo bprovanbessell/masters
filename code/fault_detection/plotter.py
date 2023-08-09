@@ -6,15 +6,6 @@ Anything else that needs to be done
 import numpy as np
 import json
 
-class Plotter():
-    def __init__(self) -> None:
-        pass
-
-    def plot_train_val_acc():
-        pass
-
-
-
 def plot_latex_table_rows(res_json, brev=False):
     accuracies = []
     precisions = []
@@ -27,6 +18,7 @@ def plot_latex_table_rows(res_json, brev=False):
             categories = ['KitchenPot', 'USB', 'Eyeglasses', 'Laptop', 'Globe', 
                           'Sitting Furniture', 'Table', 'Kettle', 'Storage Furniture', 'WashingMachine']
             
+            # categories for unseen anomaly
             # categories = ["Cart", "Eyeglasses", "Faucet", "Luggage", "Oven",
             #         "Scissors", "Sitting Furniture", "Switch", "Table", "Toilet", "Trashcan", "Window"]
 

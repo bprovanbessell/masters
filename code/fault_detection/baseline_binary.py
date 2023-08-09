@@ -40,7 +40,7 @@ def train_test_category(category:str, train_model=True, load_model=False):
     missing_parts_base_dir_v1 = '/Users/bprovan/University/dissertation/datasets/images_ds_v1'
     missing_parts_base_dir_v0_occluded = '/Users/bprovan/University/dissertation/datasets/images_ds_v0_occluded'
 
-    ds = MissingPartDatasetBalancedBinary(img_dir_base=missing_parts_base_dir_v0_occluded, category=category, transforms=preprocess, seed=seed)
+    # ds = MissingPartDatasetBalancedBinary(img_dir_base=missing_parts_base_dir_v0_occluded, category=category, transforms=preprocess, seed=seed)
 
     ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2_occluded/query_images/train', category=category, transforms=preprocess, seed=seed)
     test_ds = MissingPartDatasetBalancedBinary(img_dir_base='/Users/bprovan/University/dissertation/datasets/images_ds_v2_occluded/query_images/test', category=category, transforms=preprocess, seed=seed)
