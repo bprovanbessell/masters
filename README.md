@@ -9,7 +9,6 @@
 - bpy
 - numpy
 - pillow
-- matplotlib
 - torchmetrics
 - pytorch ignite
 
@@ -18,8 +17,6 @@
 
 Install Blender https://www.blender.org/
 
-## To generate the dataset yourself
+## To generate the dataset 
 
-1. Download partnet mobility dataset (https://sapien.ucsd.edu/downloads)
-2. Set up paths
-3. Run list_load_take_picture.py
+See dataset_gen_instructions.md in the blender folder
